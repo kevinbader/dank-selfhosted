@@ -1,0 +1,70 @@
+---
+- name: install packages
+  openbsd_pkg:
+    name: znc
+    state: present
+
+- name: add user account
+  user:
+    name: _znc
+    comment: ZNC pseudo-user
+    uid: 600
+    home: /var/znc
+    shell: /sbin/nologin
+    createhome: no
+
+- name: create znc directory
+  file:
+    path: '{{ item }}'
+    owner: _znc
+    group: _znc
+    mode: 0700
+    state: directory
+  with_items:
+    - /var/znc
+    - /var/znc/configs
+
+- name: generate configuration
+  template:
+    src: znc.conf.j2
+    dest: /var/znc/configs/znc.conf
+    owner: _znc
+    group: _znc
+    mode: 0600
+    force: no
+  notify: restart znc
+
+- name: touch znc.pem
+  copy:
+    content: ''
+    dest: /var/znc/znc.pem
+    owner: root
+    group: _znc
+    mode: 0640
+    force: no
+
+- name: generate ssl certificate
+  shell: cat /etc/ssl/private/{{ domain }}.key /etc/ssl/{{ domain }}.crt /etc/ssl/{{ domain }}.chain.pem > /var/znc/znc.pem
+  args:
+    creates: /var/znc/znc.pem
+
+- name: copy rc script
+  copy:
+    src: rc.d/znc
+    dest: /etc/rc.d/znc
+    mode: 0555
+
+- name: enable and start daemon
+  service:
+    name: znc
+    enabled: yes
+    state: started
+
+- name: add letsencrypt renewal hook
+  copy:
+    content: |
+      #!/bin/sh
+      cat /etc/ssl/private/{{ domain }}.key /etc/ssl/{{ domain }}.crt /etc/ssl/{{ domain }}.chain.pem > /var/znc/znc.pem
+      echo "znc.pem regenerated"
+    dest: /etc/acme/hooks.d/znc.sh
+    mode: 0555

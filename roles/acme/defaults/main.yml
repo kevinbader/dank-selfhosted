@@ -1,0 +1,7 @@
+---
+acme_alt_names:
+  - www
+  - xmpp
+  - mail
+  - znc
+  - vpn

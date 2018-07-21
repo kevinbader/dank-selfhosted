@@ -3,10 +3,11 @@
   vars_files:
     - vars.yml
   roles:
-    - base
-    - httpd
-    - acme
-    - nsd
-    - smtpd
-    - spamd
-    - prosody
+    - { role: base,    tags: ['base']    }
+    - { role: httpd,   tags: ['httpd']   }
+    - { role: acme,    tags: ['acme']    }
+    - { role: nsd,     tags: ['nsd']     }
+    - { role: smtpd,   tags: ['smtpd']   }
+    - { role: spamd,   tags: ['spamd']   }
+    - { role: prosody, tags: ['prosody'] }
+    - { role: znc,     tags: ['znc']     }

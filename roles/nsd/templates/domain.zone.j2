@@ -28,6 +28,10 @@ conference IN A {{ ip }}
 conference IN AAAA {{ ip6 }}
 proxy IN A {{ ip }}
 proxy IN AAAA {{ ip6 }}
+znc IN A {{ ip }}
+znc IN AAAA {{ ip6 }}
+vpn IN A {{ ip }}
+vpn IN AAAA {{ ip6 }}
 
 {% for name, record in (dns_records | default({})).iteritems() %}
 {{ name }} IN A {{ record.ip }}

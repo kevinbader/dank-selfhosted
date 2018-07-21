@@ -1,0 +1,69 @@
+AnonIPLimit = 10
+ConnectDelay = 5
+HideVersion = true
+LoadModule = webadmin
+LoadModule = imapauth
+LoadModule = block_motd
+LoadModule = chansaver
+MaxBufferSize = 500
+ProtectWebSessions = true
+SSLCertFile = /var/znc/znc.pem
+ServerThrottle = 30
+Skin = _default_
+StatusPrefix = *
+Version = 1.6.5
+
+<Listener listener0>
+	AllowIRC = true
+	AllowWeb = true
+	Host = ::
+	IPv4 = false
+	IPv6 = true
+	Port = {{ znc_port }}
+	SSL = true
+	URIPrefix = /
+</Listener>
+
+<Listener listener1>
+	AllowIRC = true
+	AllowWeb = true
+	Host = 0.0.0.0
+	IPv4 = true
+	IPv6 = false
+	Port = {{ znc_port }}
+	SSL = true
+	URIPrefix = /
+</Listener>
+
+<User {{ username }}>
+	Admin = true
+	Allow = *
+	AltNick = {{ username }}_
+	AppendTimestamp = false
+	AutoClearChanBuffer = true
+	AutoClearQueryBuffer = true
+	Buffer = 50
+	DenyLoadMod = false
+	DenySetBindHost = false
+	Ident = {{ username }}
+	JoinTries = 10
+	LoadModule = chansaver
+	LoadModule = controlpanel
+	MaxJoins = 0
+	MaxNetworks = 5
+	MaxQueryBuffers = 50
+	MultiClients = true
+	Nick = {{ username }}
+	PrependTimestamp = true
+	QuitMsg = %znc%
+	RealName = {{ realname }}
+	TimestampFormat = [%H:%M:%S]
+
+  // even though we are using imap authentication, we have to set a password
+  // or ZNC freaks out. This is the hash for hunter2 :-)
+	<Pass password>
+		Hash = d0c016d5cd7e88e3ba399278bf7e07ec64e1f12b11b30dc0cc3dda467b46a75a
+		Method = SHA256
+		Salt = !B_s?JAX6oX8n6bGPeB1
+	</Pass>
+</User>

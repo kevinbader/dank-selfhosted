@@ -4,7 +4,7 @@ authority letsencrypt {
 }
 
 domain {{ domain }} {
-  alternative names { www.{{ domain }}  xmpp.{{ domain }} mail.{{ domain }} }
+  alternative names { {{ acme_alt_names | map('regex_replace', '(.*)', '\\1.'+domain) | join(' ') }} }
   domain key "/etc/ssl/private/{{ domain }}.key"
   domain certificate "/etc/ssl/{{ domain }}.crt"
   domain chain certificate "/etc/ssl/{{ domain }}.chain.pem"

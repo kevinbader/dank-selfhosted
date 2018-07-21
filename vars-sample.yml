@@ -6,6 +6,7 @@ hostname: puffy             # the hostname of this machine
 domain: example.com         # your domain name
 
 username: your_username     # your username on this machine. account must already exist.
+realname: Your Name         # needed for ZNC...
 ssh_keys:                   # you MUST add an SSH key for yourself here or you will be locked out!
   - ssh-ed25519 AAAAasdf....
 

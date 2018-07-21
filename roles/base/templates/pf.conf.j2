@@ -1,4 +1,4 @@
-inbound_tcp = "{ http, https, submission, imaps, domain, xmpp-client, xmpp-server, xmpp-bosh, {{ prosody_proxy_port }}, {{ sshd_port }} }"
+inbound_tcp = "{ http, https, submission, imaps, domain, xmpp-client, xmpp-server, xmpp-bosh, {{ prosody_proxy_port }}, {{ znc_port }}, {{ sshd_port }} }"
 inbound_udp = "{ domain }"
 
 {% if open_ports %}
