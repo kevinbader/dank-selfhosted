@@ -66,6 +66,9 @@ open_ports:                 # By default, thie firewall blocks all inbound traff
   - 6001                    # opened to the internet.
   - 6002
 
+open_udp_ports:             # same thing, but for UDP
+  - 7000
+
 # Add any mail aliases here. The default example forwards all mail addressed to
 # root@example.com and administrator@exmaple.com to your mailbox.
 # All local mail for the superuser is forwarded to you by default.

@@ -5,6 +5,10 @@ inbound_udp = "{ domain }"
 open_ports = "{ {{ open_ports | join(', ') }} }"
 {% endif %}
 
+{% if open_udp_ports %}
+open_udp_ports = "{ {{ open_udp_ports | join(', ') }} }"
+{% endif %}
+
 table <spamd-white> persist
 table <bigmailers> persist
 table <nospamd> persist file "/etc/mail/whitelist.txt"
@@ -24,6 +28,10 @@ pass in on egress inet proto tcp from { <nospamd>, <spamd-white>, <bigmailers> }
 {% if open_ports %}
 pass in on egress proto tcp to port $open_ports
 {% endif %}
+{% if open_udp_ports %}
+pass in on egress proto udp to port $open_udp_ports
+{% endif %}
+
 pass in on egress proto tcp to port $inbound_tcp
 pass in on egress proto udp to port $inbound_udp
 
