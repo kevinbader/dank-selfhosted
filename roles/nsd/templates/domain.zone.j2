@@ -33,7 +33,7 @@ znc IN AAAA {{ ip6 }}
 vpn IN A {{ ip }}
 vpn IN AAAA {{ ip6 }}
 
-{% for name, record in (dns_records | default({})).iteritems() %}
+{% for name, record in (a_records | default({})).iteritems() %}
 {{ name }} IN A {{ record.ip }}
 {% if record.ip6 is defined %}
 {{ name }} IN AAAA {{ record.ip6 }}
@@ -51,8 +51,8 @@ ns{{ loop.index }} IN AAAA {{ addr }}
 {{ dkim_records }}
 
 ; SRV records
-{% for r in srv_records %}
-_{{ r.service }}._{{ r.proto }}{{ '.'+r.subdomain if r.subdomain is defined else '' }} IN SRV 0 1 {{ r.port }} {{ r.host }}.{{ domain }}.
+{% for r in _srv_records  + (srv_records | default([])) %}
+_{{ r.service }}._{{ r.proto }}{{ '.'+r.subdomain if r.subdomain is defined else '' }} IN SRV {{ r.priority | default(0) }} {{ r.weight | default(1) }} {{ r.port }} {{ r.host }}.{{ domain }}.
 {% endfor %}
 
 ; antispam

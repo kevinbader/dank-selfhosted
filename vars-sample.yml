@@ -53,13 +53,16 @@ ssh_users:                  # By default, only your user account is added to the
 spamd_whitelist:            # Mail from any IP or CIDR block listed here will never sent to spamd.
   - 203.0.113.0/24
 
-dns_records:                # Any additional subdomains defined here will be added as A/AAAA records to
+a_records:                  # Any additional subdomains defined here will be added as A/AAAA records to
   dankhost1:                # your zonefile.
     ip: 203.0.113.240
     ip6: 2001:db8::40
   dankhost2:
     ip: 203.0.113.241
     ip6: 2001:db8::41
+
+srv_records:                # Define any additional SRV records for DNS here.
+  - { service: matrix, port: 8448, proto: tcp, host: matrix }
 
 open_ports:                 # By default, thie firewall blocks all inbound traffic except for the services
   - 6000                    # managed by this playbook. List any additional TCP ports here that you'd like
