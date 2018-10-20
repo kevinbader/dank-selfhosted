@@ -21,3 +21,6 @@
 
 - name: newsyslog
   command: newsyslog
+
+- name: enable private network
+  command: sh /etc/netstart {{ private_interface }}

@@ -46,6 +46,11 @@ sshd_port: 11522            # SSH port. Don't choose 22 unless you like being ha
 
 
 # ===== OPTIONAL VARIABLES =====
+private_interface: vio1     # If your hosting provider provides a private network, you can set it here.
+private_ip: 10.0.0.10
+private_netmask: 255.255.240.0
+private_mtu: 1450
+
 ssh_users:                  # By default, only your user account is added to the ssh group. List any
   - bob                     #  additional user accounts here to grant them SSH access. The accounts
   - alice                   #  must already exist.
@@ -71,6 +76,9 @@ open_ports:                 # By default, thie firewall blocks all inbound traff
 
 open_udp_ports:             # same thing, but for UDP
   - 7000
+
+etc_hosts:                  # put any entries for /etc/hosts here.
+  intranet_host: 10.0.0.10
 
 # Add any mail aliases here. The default example forwards all mail addressed to
 # root@example.com and administrator@exmaple.com to your mailbox.
