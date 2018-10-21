@@ -3,6 +3,9 @@ pki mail.{{ domain }} key "/etc/ssl/private/{{ domain }}.key"
 
 listen on lo0
 listen on lo0 port {{ dkim_relay_port }} tag DKIM
+{% if private_interface is defined %}
+listen on {{ private_interface }} tls pki mail.{{ domain }}
+{% endif %}
 listen on egress inet4 tls pki mail.{{ domain }}
 listen on egress inet4 mask-source port 587 tls-require pki mail.{{ domain }} auth
 
@@ -13,3 +16,6 @@ accept from local for local alias <local_aliases> deliver to lmtp "/var/dovecot/
 accept from any for domain {{ domain }} alias <aliases> deliver to lmtp "/var/dovecot/lmtp"
 accept tagged DKIM for any relay source {{ ip }} hostname mail.{{ domain }}
 accept from local for any relay via smtp://127.0.0.1:{{ dkim_listen_port }}
+{% if private_interface is defined %}
+accept from source {{ private_cidr }} for any relay via smtp://127.0.0.1:{{ dkim_listen_port }}
+{% endif %}

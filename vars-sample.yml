@@ -50,6 +50,7 @@ private_interface: vio1     # If your hosting provider provides a private networ
 private_ip: 10.0.0.10
 private_netmask: 255.255.240.0
 private_mtu: 1450
+private_cidr: 10.0.0.0/20
 
 ssh_users:                  # By default, only your user account is added to the ssh group. List any
   - bob                     #  additional user accounts here to grant them SSH access. The accounts
