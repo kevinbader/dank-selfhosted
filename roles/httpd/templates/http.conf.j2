@@ -1,11 +1,10 @@
 listen on * port 80
-listen on :: port 80
 
 log style combined
 
 location "/.well-known/acme-challenge/*" {
   root "/acme"
-  root strip 2
+  request strip 2
 }
 
 location * {

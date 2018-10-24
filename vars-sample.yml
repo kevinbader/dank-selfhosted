@@ -82,11 +82,10 @@ etc_hosts:                  # put any entries for /etc/hosts here.
   intranet_host: 10.0.0.10
 
 # Add any mail aliases here. The default example forwards all mail addressed to
-# root@example.com and administrator@exmaple.com to your mailbox.
-# All local mail for the superuser is forwarded to you by default.
+# administrator@exmaple.com to your mailbox.
+# All mail for 'root'  is forwarded to you by default.
 mail_aliases:
   administrator: '{{ username }}'
-  root: '{{ username }}'
 
 
 # ===== OTHER OPTIONS =====

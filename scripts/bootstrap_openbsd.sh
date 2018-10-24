@@ -5,7 +5,7 @@ if [ $(id -u) -ne 0 ] ; then
   exit 1
 fi
 
-echo 'https://cloudflare.cdn.openbsd.org/pub/OpenBSD' > /etc/installurl
+echo 'https://cdn.openbsd.org/pub/OpenBSD' > /etc/installurl
 pkg_add -xz python-2.7 ansible py-psycopg2
 echo 'permit nopass :wheel' > /etc/doas.conf
 

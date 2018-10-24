@@ -1,11 +1,8 @@
 ---
 - name: create table files
   template:
-    src: '{{ item }}.j2'
-    dest: /etc/mail/{{ item }}
-  with_items:
-    - local_aliases
-    - aliases
+    src: aliases.j2
+    dest: /etc/mail/aliases
   notify: makemap
 
 - name: generate smtpd.conf
