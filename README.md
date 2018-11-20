@@ -7,6 +7,9 @@ and DNS records using [OpenBSD](https://www.openbsd.org/). I use it to host ever
 [c0ffee.net](https://www.c0ffee.net), but you can easily adapt it for your own domain by
 setting a few variables in `vars.yml`.
 
+This setup can integrate nicely with [my other Debian-based playbook](https://github.com/cullum/matrix-ansible)
+for running your own [Matrix](https://matrix.org) homeserver and [Mastodon](https://joinmastodon.org/) instance.
+
 ## TLDR
 
 1. Configure a [secondary DNS provider](https://cp.dnsmadeeasy.com/u/122648) and set them as your nameservers at your registrar. Set up reverse DNS for your server.
