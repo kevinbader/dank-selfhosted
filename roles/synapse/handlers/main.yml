@@ -1,0 +1,15 @@
+---
+- name: restart synapse
+  service:
+    name: synapse
+    state: restarted
+
+- name: restart turnserver
+  service:
+    name: turnserver
+    state: restarted
+
+- name: reload httpd
+  service:
+    name: httpd
+    state: reloaded

@@ -1,0 +1,12 @@
+listening-port={{ synapse_turn_port }}
+use-auth-secret
+static-auth-secret={{ turn_secret }}
+realm=turn.{{ domain }}
+no-tcp-relay
+allowed-peer-ip={{ ip }}
+allowed-peer-ip=[{{ ip6 }}]
+user-quota={{ synapse_turn_user_quota }}
+total-quota={{ synapse_turn_total_quota }}
+no-tls
+no-dtls
+no-cli

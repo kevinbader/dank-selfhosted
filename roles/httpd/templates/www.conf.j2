@@ -40,7 +40,7 @@ server www.{{ domain }} {
 
 server www.{{ domain }} {
   include "/etc/httpd.d/https.conf"
-  root "/htdocs/www.{{ domain }}"
+  root "/htdocs/www"
 
   location "/rss/" {
     directory index "index.rss"

@@ -13,11 +13,6 @@
     dest: /etc/httpd.d/sites.conf
     force: no
 
-- name: delete sample site
-  file:
-    path: /var/www/htdocs/bgplg
-    state: absent
-
 - name: generate configuration
   template:
     src: '{{ item.0 }}.j2'
@@ -33,35 +28,13 @@
     enabled: yes
     state: started
 
-- name: check if acme client has been bootstrapped
-  stat:
-    path: /etc/ssl/{{ domain }}.fullchain.pem
-  register: check_ssl_cert
-
-- block:
-    - meta: flush_handlers
-
-    - name: bootstrap acme client
-      include_role:
-        name: acme
-
-  when: not check_ssl_cert.stat.exists
-
-- name: generate configuration for vhost www.{{ domain }}
+- name: generate configuration for www vhost
   template:
     src: www.conf.j2
-    dest: /etc/sites/www.{{ domain }}.conf
+    dest: /etc/sites/www.conf
   notify: reload httpd
 
-- name: enable vhost www.{{ domain }}
+- name: enable www vhost
   lineinfile:
     path: /etc/httpd.d/sites.conf
-    line: include "/etc/sites/www.{{ domain }}.conf"
-
-- name: add acme hook
-  copy:
-    content: |
-      #!/bin/sh
-      rcctl reload httpd
-    dest: /etc/acme/hooks.d/httpd.sh
-    mode: 0555
+    line: include "/etc/sites/www.conf"

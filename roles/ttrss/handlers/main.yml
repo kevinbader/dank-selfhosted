@@ -1,0 +1,10 @@
+---
+- name: reload httpd
+  service:
+    name: httpd
+    state: reloaded
+
+- name: restart php-fpm
+  service:
+    name: php72_fpm
+    state: restarted

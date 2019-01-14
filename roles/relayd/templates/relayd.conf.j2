@@ -1,0 +1,36 @@
+table <httpd>   { 127.0.0.1 }
+table <prosody> { 127.0.0.1 }
+table <matrix>  { 127.0.0.1 }
+
+log connection
+
+http protocol "http" {
+  tcp { sack, nodelay, backlog 128 }
+  tls { no session tickets }
+  return error
+
+  match header log "Host"
+
+  match header set "X-Forwarded-For"   value "$REMOTE_ADDR"
+  match header set "X-Forwarded-By"    value "$SERVER_ADDR:$SERVER_PORT"
+  match header set "X-Forwarded-Proto" value "https"
+  match header set "Keep-Alive"        value "$TIMEOUT"
+
+  match response header set "Strict-Transport-Security" value "max-age=31536000; includeSubDomains; preload"
+
+  block
+  pass request quick header "Host" value "{{ domain }}"        forward to <httpd>
+  pass request quick header "Host" value "www.{{ domain }}"    forward to <httpd>
+  pass request quick header "Host" value "ttrss.{{ domain }}"  forward to <httpd>
+  pass request quick header "Host" value "xmpp.{{ domain }}"   forward to <prosody>
+  pass request quick header "Host" value "matrix.{{ domain }}" forward to <matrix>
+}
+
+relay "www" {
+  listen on 127.0.0.1 port {{ relayd_https_port }} tls
+  listen on ::1       port {{ relayd_https_port }} tls
+  protocol "http"
+  forward to <httpd>   port {{ httpd_secure_port }}
+  forward to <prosody> port {{ prosody_http_port }}
+  forward to <matrix>  port {{ synapse_client_port }}
+}

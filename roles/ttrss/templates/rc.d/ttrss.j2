@@ -1,0 +1,18 @@
+#!/bin/ksh
+
+daemon="{{ php_path }}"
+daemon_flags="-d disable_functions= {{ ttrss_home }}/update_daemon2.php --quiet"
+daemon_user="_ttrss"
+
+. /etc/rc.d/rc.subr
+
+pexp="${daemon} ${daemon_flags}"
+
+rc_bg=YES
+rc_reload=NO
+
+rc_post() {
+  rm -f {{ ttrss_home }}/lock/update_daemon.lock
+}
+
+rc_cmd $1

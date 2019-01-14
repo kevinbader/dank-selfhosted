@@ -32,6 +32,12 @@ znc IN A {{ ip }}
 znc IN AAAA {{ ip6 }}
 vpn IN A {{ ip }}
 vpn IN AAAA {{ ip6 }}
+ttrss IN A {{ ip }}
+ttrss IN AAAA {{ ip6 }}
+matrix IN A {{ ip }}
+matrix IN AAAA {{ ip6 }}
+turn IN A {{ ip }}
+turn IN AAAA {{ ip6 }}
 
 {% for name, record in (a_records | default({})).iteritems() %}
 {{ name }} IN A {{ record.ip }}
@@ -51,6 +57,7 @@ ns{{ loop.index }} IN AAAA {{ addr }}
 {{ dkim_records }}
 
 ; SRV records
+_matrix._tcp IN SRV 0 1 8448 matrix.{{ domain }}.
 {% for r in _srv_records  + (srv_records | default([])) %}
 _{{ r.service }}._{{ r.proto }}{{ '.'+r.subdomain if r.subdomain is defined else '' }} IN SRV {{ r.priority | default(0) }} {{ r.weight | default(1) }} {{ r.port }} {{ r.host }}.{{ domain }}.
 {% endfor %}

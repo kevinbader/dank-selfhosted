@@ -1,0 +1,99 @@
+---
+- name: create ttrss user
+  user:
+    name: _ttrss
+    comment: 'Tiny Tiny RSS Pseudo-User'
+    shell: /sbin/nologin
+    home: '{{ ttrss_home }}'
+    uid: '{{ ttrss_uid }}'
+    createhome: no
+
+- name: create ttrss directory
+  file:
+    path: '{{ ttrss_home }}'
+    state: directory
+
+- name: create database user
+  postgresql_user:
+    name: _ttrss
+  become_user: _postgresql
+
+- name: create database
+  postgresql_db:
+    name: ttrss
+    owner: _ttrss
+  become_user: _postgresql
+
+- name: generate ttrss vhost
+  template:
+     src: httpd/ttrss.conf.j2
+     dest: /etc/sites/ttrss.conf
+  notify: reload httpd
+
+- name: enable ttrss vhost
+  lineinfile:
+    path: /etc/httpd.d/sites.conf
+    line: include "/etc/sites/ttrss.conf"
+  notify: reload httpd
+
+- name: generate php-fpm config
+  template:
+    src: php/ttrss.conf.j2
+    dest: /etc/php-fpm.d/ttrss.conf
+  notify: restart php-fpm
+
+- name: enable php-fpm
+  service:
+    name: php72_fpm
+    enabled: yes
+    state: started
+
+- name: clone ttrss repo
+  git:
+    repo: '{{ ttrss_repo }}'
+    dest: '{{ ttrss_home }}'
+
+- name: generate config.php
+  template:
+    src: config.php.j2
+    dest: '{{ ttrss_home }}/config.php'
+
+- name: fix permissions
+  file:
+    path: '{{ ttrss_home }}/{{ item }}'
+    state: directory
+    owner: root
+    group: _ttrss
+    mode: 0775
+  with_items:
+    - cache
+    - cache/images
+    - cache/upload
+    - cache/export
+    - cache/js
+    - lock
+    - feed-icons
+
+- name: check if database is initialized
+  command: psql ttrss -c 'SELECT 1 from ttrss_version'
+  become_user: _ttrss
+  changed_when: False
+  failed_when: False
+  register: check_db
+
+- name: initialize database
+  command: psql ttrss -f {{ ttrss_home }}/schema/ttrss_schema_pgsql.sql
+  become_user: _ttrss
+  when: check_db.rc != 0
+
+- name: generate rc file
+  template:
+    src: rc.d/ttrss.j2
+    dest: /etc/rc.d/ttrss
+    mode: 0555
+
+- name: start ttrss daemon
+  service:
+    name: ttrss
+    enabled: yes
+    state: started

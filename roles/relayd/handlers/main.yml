@@ -1,0 +1,5 @@
+---
+- name: reload relayd
+  service:
+    name: relayd
+    state: reloaded

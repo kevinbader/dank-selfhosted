@@ -3,11 +3,21 @@
   vars_files:
     - vars.yml
   roles:
-    - { role: base,    tags: ['base']    }
-    - { role: httpd,   tags: ['httpd']   }
-    - { role: acme,    tags: ['acme']    }
-    - { role: nsd,     tags: ['nsd']     }
-    - { role: smtpd,   tags: ['smtpd']   }
-    - { role: spamd,   tags: ['spamd']   }
-    - { role: prosody, tags: ['prosody'] }
-    - { role: znc,     tags: ['znc']     }
+    # Explicity specify ordering of all roles and dependencies here. Sadly,
+    # the the version of ansible on OpenBSD 6.4 just blindly executes roles
+    # specified in meta dependencies multiple times.
+    - { role: base,       tags: ['base']       }
+    - { role: dkim,       tags: ['dkim']       }
+    - { role: nsd,        tags: ['nsd']        }
+    - { role: httpd,      tags: ['httpd']      }
+    - { role: acme,       tags: ['acme']       }
+    - { role: relayd,     tags: ['relayd']     }
+    - { role: dovecot,    tags: ['dovecot']    }
+    - { role: smtpd,      tags: ['smtpd']      }
+    - { role: spamd,      tags: ['spamd']      }
+    - { role: postgresql, tags: ['postgresql'] }
+    - { role: prosody,    tags: ['prosody']    }
+    - { role: znc,        tags: ['znc']        }
+    - { role: php,        tags: ['php']        }
+    - { role: ttrss,      tags: ['ttrss']      }
+    - { role: synapse,    tags: ['synapse']    }

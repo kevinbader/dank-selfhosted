@@ -1,2 +1,3 @@
 ---
 use_mastodon: False
+httpd_secure_port: 8080

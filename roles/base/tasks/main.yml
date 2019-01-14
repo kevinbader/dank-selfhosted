@@ -113,6 +113,23 @@
     dest: /etc/newsyslog.conf
   notify: newsyslog
 
+- name: touch log files
+  copy:
+    content: ""
+    dest: /var/log/{{ item }}
+    force: no
+    owner: root
+    group: wheel
+    mode: 0640
+  with_items:
+    - spamd
+    - prosody
+    - nsd
+    - postgres
+    - httpd
+    - php-fpm
+    - relayd
+
 - name: set dank MOTD
   template:
     src: motd.j2

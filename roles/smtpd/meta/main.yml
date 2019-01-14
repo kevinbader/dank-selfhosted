@@ -1,5 +1,0 @@
----
-dependencies:
-  - acme
-  - dovecot
-  - dkim

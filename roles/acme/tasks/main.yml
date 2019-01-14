@@ -54,3 +54,14 @@
     job: ocspcheck -Nvo /etc/ssl/{{ domain }}.der /etc/ssl/{{ domain }}.fullchain.pem && rcctl reload httpd
     hour: 5
     minute: 26
+
+- name: create relayd symlinks
+  file:
+    src: '/etc/ssl/{{ item.src }}'
+    dest: '/etc/ssl/{{ item.dest }}'
+    state: link
+  with_items:
+    - { src: '{{ domain }}.fullchain.pem', dest: '::1.crt' }
+    - { src: '{{ domain }}.fullchain.pem', dest: '127.0.0.1.crt' }
+    - { src: 'private/{{ domain }}.key',   dest: 'private/::1.key' }
+    - { src: 'private/{{ domain }}.key',   dest: 'private/127.0.0.1.key' }

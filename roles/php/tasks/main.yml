@@ -1,0 +1,27 @@
+---
+- name: install packages
+  openbsd_pkg:
+    name: '{{ item }}-{{ php_pkg_version }}'
+    state: present
+  with_items:
+    - php
+    - php-pdo_pgsql
+    - php-pgsql
+    - php-curl
+    - php-gd
+    - php-pcntl
+
+- name: create directories
+  file:
+    path: /etc/php-fpm.d
+    state: directory
+
+- name: generate php.ini
+  template:
+    src: php.ini.j2
+    dest: /etc/php-{{ php_version }}.ini
+
+- name: copy php-fpm.conf
+  copy:
+    src: php-fpm.conf
+    dest: /etc/php-fpm.conf

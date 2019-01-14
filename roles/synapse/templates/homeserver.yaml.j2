@@ -1,0 +1,158 @@
+# vim:ft=yaml
+server_name: {{ domain }}
+
+tls_certificate_path: "{{ synapse_config_dir }}/homeserver.tls.crt"
+tls_private_key_path: "{{ synapse_config_dir }}/private/homeserver.tls.key"
+tls_dh_params_path: "{{ synapse_config_dir }}/homeserver.tls.dh"
+no_tls: False
+tls_fingerprints: []
+
+pid_file: "{{ synapse_run_dir }}/synapse.pid"
+
+web_client: False
+public_baseurl: https://matrix.{{ domain }}:{{ synapse_federation_port }}/
+soft_file_limit: 0
+
+listeners:
+  - port: {{ synapse_federation_port }}
+    bind_addresses: ['::', '0.0.0.0']
+    type: http
+    tls: true
+    x_forwarded: false
+    resources:
+      - names: [client]
+        compress: true
+      - names: [federation]
+        compress: false
+
+  - port: {{ synapse_client_port }}
+    tls: false
+    bind_addresses: ['127.0.0.1']
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client]
+        compress: true
+      - names: [federation]
+        compress: false
+
+database:
+  name: psycopg2
+  args:
+    user: _synapse
+    database: synapse
+    cp_min: 5
+    cp_max: 10
+
+event_cache_size: 10K
+log_config: {{ synapse_config_dir }}/log.yaml
+rc_messages_per_second: 0.2
+rc_message_burst_count: 10.0
+federation_rc_window_size: 1000
+federation_rc_sleep_limit: 10
+federation_rc_sleep_delay: 500
+federation_rc_reject_limit: 50
+federation_rc_concurrent: 3
+media_store_path: {{ synapse_storage_dir }}/media
+uploads_path: {{ synapse_storage_dir }}/uploads
+
+max_upload_size: {{ synapse_max_upload_size }}
+max_image_pixels: 32M
+dynamic_thumbnails: true
+thumbnail_sizes:
+  - width: 32
+    height: 32
+    method: crop
+  - width: 96
+    height: 96
+    method: crop
+  - width: 320
+    height: 240
+    method: scale
+  - width: 640
+    height: 480
+    method: scale
+  - width: 800
+    height: 600
+    method: scale
+
+url_preview_enabled: True
+url_preview_ip_range_blacklist:
+  - '127.0.0.0/8'
+  - '10.0.0.0/8'
+  - '172.16.0.0/12'
+  - '192.168.0.0/16'
+  - '100.64.0.0/10'
+  - '169.254.0.0/16'
+
+max_spider_size: 32M
+
+enable_registration_captcha: False
+
+# The public URIs of the TURN server to give to clients
+turn_uris:
+  - turn:turn.{{ domain }}:{{ synapse_turn_port }}?transport=udp
+  - turn:turn.{{ domain }}:{{ synapse_turn_port }}?transport=tcp
+turn_shared_secret: {{ turn_secret }}
+turn_user_lifetime: 86400000
+turn_allow_guests: {{ synapse_turn_allow_guests }}
+
+enable_registration: False
+registration_shared_secret: {{ registration_secret }}
+
+bcrypt_rounds: 12
+allow_guest_access: False
+
+trusted_third_party_id_servers:
+    - matrix.org
+    - vector.im
+    - riot.im
+
+enable_metrics: False
+
+room_invite_state_types:
+    - "m.room.join_rules"
+    - "m.room.canonical_alias"
+    - "m.room.avatar"
+    - "m.room.name"
+
+app_service_config_files: []
+
+macaroon_secret_key: {{ macaroon_secret }}
+
+expire_access_token: False
+
+signing_key_path: {{ synapse_config_dir }}/homeserver.signing.key
+old_signing_keys: {}
+key_refresh_interval: 1d
+
+perspectives:
+  servers:
+    "matrix.org":
+      verify_keys:
+        "ed25519:auto":
+          key: "Noi6WqcDj0QmPxCNQqgezwTlBKrfqehY1u2FyWP9uYw"
+
+password_config:
+   enabled: true
+   #pepper: ""
+
+#email:
+#   enable_notifs: false
+#   smtp_host: "localhost"
+#   smtp_port: 25
+#   require_transport_security: False
+#   notif_from: "{{ domain }} %(app)s Home Server <matrix-noreply@{{ domain }}>"
+#   app_name: Matrix
+#   template_dir: res/templates
+#   notif_template_html: notif_mail.html
+#   notif_template_text: notif_mail.txt
+#   notif_for_new_users: True
+#   riot_base_url: "https://riot.{{ domain }}/"
+
+push:
+  include_content: True
+
+enable_group_creation: True
+
+report_stats: False

@@ -1,0 +1,20 @@
+---
+- name: generate configuration
+  template:
+    src: relayd.conf.j2
+    dest: /etc/relayd.conf
+  notify: reload relayd
+
+- name: enable and start daemon
+  service:
+    name: relayd
+    enabled: yes
+    state: started
+
+- name: add acme hook
+  copy:
+    content: |
+      #!/bin/sh
+      rcctl reload relayd
+    dest: /etc/acme/hooks.d/relayd.sh
+    mode: 0555

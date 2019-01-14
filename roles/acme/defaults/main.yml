@@ -5,3 +5,4 @@ acme_alt_names:
   - mail
   - znc
   - vpn
+  - ttrss

@@ -1,0 +1,6 @@
+---
+synapse_home: /usr/local/share/synapse
+synapse_config_dir: /etc/synapse
+synapse_run_dir: /var/run/synapse
+synapse_storage_dir: /var/db/synapse
+synapse_log_dir: /var/log/synapse

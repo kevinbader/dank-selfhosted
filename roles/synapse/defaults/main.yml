@@ -1,0 +1,9 @@
+---
+synapse_uid: 904
+synapse_max_upload_size: 32M
+synapse_client_port: 8008
+synapse_federation_port: 8448
+synapse_turn_user_quota: 12
+synapse_turn_total_quota: 1200
+synapse_turn_allow_guests: False
+synapse_turn_port: 3478

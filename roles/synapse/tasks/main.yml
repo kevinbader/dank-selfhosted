@@ -1,0 +1,150 @@
+---
+- name: install packages
+  openbsd_pkg:
+    name: '{{ item }}'
+    state: present
+  with_items:
+    - python-3.6.6p1
+    - libffi
+    - py3-pip
+    - py3-setuptools
+    - sqlite3
+    - py3-virtualenv
+    - libxslt
+    - jpeg
+    - turnserver
+    - pwgen
+    - libpqxx
+
+- name: create synapse user user
+  user:
+    name: _synapse
+    comment: 'Synapse Pseudo-User'
+    shell: /sbin/nologin
+    home: '{{ synapse_home }}'
+    uid: '{{ synapse_uid }}'
+    createhome: no
+
+- name: create synapse directories
+  file:
+    path: '{{ item }}'
+    state: directory
+    owner: root
+    group: _synapse
+    mode: 0775
+  with_items:
+    - '{{ synapse_home }}'
+    - '{{ synapse_log_dir }}'
+    - '{{ synapse_run_dir }}'
+    - '{{ synapse_config_dir }}'
+    - '{{ synapse_storage_dir }}'
+
+- name: create private cert directory
+  file:
+    path: '{{ synapse_config_dir }}/private'
+    state: directory
+    owner: root
+    group: _synapse
+    mode: 0770
+
+- name: pip install packages
+  pip:
+    name: '{{ item }}'
+    virtualenv: '{{ synapse_home }}'
+    virtualenv_python: python3.6
+    virtualenv_command: virtualenv-3
+  become_user: _synapse
+  environment:
+    HOME: '{{ synapse_home }}'
+  with_items:
+    - lxml
+    - matrix-synapse
+    - psycopg2
+
+- name: create database user
+  postgresql_user:
+    name: _synapse
+  become_user: _postgresql
+
+- name: create database
+  postgresql_db:
+    name: synapse
+    owner: _synapse
+    encoding: UTF8
+    lc_collate: C
+    lc_ctype: C
+    template: template0
+
+- include: generate_secrets.yml
+
+- name: generate homeserver configuration
+  template:
+    src: homeserver.yaml.j2
+    dest: '{{ synapse_config_dir }}/homeserver.yaml'
+    owner: root
+    group: _synapse
+    mode: 0640
+  notify: restart synapse
+
+- name: generate logging configuration
+  template:
+    src: log.yaml.j2
+    dest: '{{ synapse_config_dir }}/log.yaml'
+    owner: root
+    group: _synapse
+    mode: 0644
+  notify: restart synapse
+
+- name: generate certificates
+  shell: >
+    . {{ synapse_home }}/bin/activate &&
+    python -m synapse.app.homeserver
+    --config-path {{ synapse_config_dir }}/homeserver.yaml
+    --generate-keys
+  args:
+    chdir: '{{ synapse_home }}'
+    creates: '{{ synapse_config_dir }}/private/homeserver.tls.key'
+  become_user: _synapse
+
+- name: generate turnserver configuration
+  template:
+    src: turnserver.conf.j2
+    dest: /etc/turnserver.conf
+    owner: root
+    group: _turnserver
+    mode: 0640
+  notify: restart turnserver
+
+- name: generate synapse rc file
+  template:
+    src: rc.d/synapse.j2
+    dest: /etc/rc.d/synapse
+    mode: 0555
+
+- name: enable turnserver daemon
+  service:
+    name: turnserver
+    enabled: yes
+    state: started
+
+- name: enable synapse daemon
+  service:
+    name: synapse
+    enabled: yes
+    state: started
+
+- name: generate matrix vhost
+  copy:
+    content: |
+      server matrix.{{ domain }} {
+        include "/etc/httpd.d/http.conf"
+        root "/nonexistent"
+      }
+    dest: /etc/sites/matrix.conf
+  notify: reload httpd
+
+- name: enable matrix vhost
+  lineinfile:
+    path: /etc/httpd.d/sites.conf
+    line: include "/etc/sites/matrix.conf"
+  notify: reload httpd

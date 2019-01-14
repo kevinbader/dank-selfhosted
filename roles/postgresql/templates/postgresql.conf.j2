@@ -1,3 +1,4 @@
+unix_socket_directories = '{{ postgresql_socket_dirs | join (',') }}'
 listen_addresses = ''
 max_connections = 30
 

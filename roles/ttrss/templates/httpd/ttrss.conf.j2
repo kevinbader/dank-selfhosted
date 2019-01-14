@@ -1,0 +1,14 @@
+server ttrss.{{ domain }} {
+  include "/etc/httpd.d/http.conf"
+  root "/nonexistent"
+}
+
+server ttrss.{{ domain }} {
+  include "/etc/httpd.d/https.conf"
+  root "/htdocs/ttrss"
+  directory index index.php
+
+  location "*.php" {
+    fastcgi socket "/run/ttrss.sock"
+  }
+}

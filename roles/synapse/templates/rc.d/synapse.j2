@@ -1,0 +1,22 @@
+#!/bin/ksh
+
+daemon="{{ synapse_home }}/bin/synctl"
+daemon_user="_synapse"
+daemon_flags="{{ synapse_config_dir }}/homeserver.yaml"
+
+. /etc/rc.d/rc.subr
+
+rc_reload=NO
+pexp="{{ synapse_home }}/bin/python3.6 -B -m synapse.app.homeserver --daemonize -c ${daemon_flags}"
+
+rc_start() {
+  . {{ synapse_home }}/bin/activate
+  ${rcexec} "${daemon} start ${daemon_flags}"
+}
+
+rc_stop() {
+  . {{ synapse_home }}/bin/activate
+  ${daemon} stop ${daemon_flags}
+}
+
+rc_cmd $1

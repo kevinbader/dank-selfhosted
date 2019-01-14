@@ -1,5 +1,5 @@
-inbound_tcp = "{ http, https, submission, imaps, domain, xmpp-client, xmpp-server, xmpp-bosh, {{ prosody_proxy_port }}, {{ znc_port }}, {{ sshd_port }} }"
-inbound_udp = "{ domain }"
+inbound_tcp = "{ http, submission, imaps, domain, xmpp-client, xmpp-server, xmpp-bosh, {{ prosody_proxy_port }}, {{ znc_port }}, {{ sshd_port }}, {{ synapse_turn_port }}, {{ synapse_federation_port }} }"
+inbound_udp = "{ domain, {{ synapse_turn_port }} }"
 
 {% if open_ports %}
 open_ports = "{ {{ open_ports | join(', ') }} }"
@@ -24,6 +24,10 @@ pass proto icmp6
 {% if private_interface is defined %}
 pass in on {{ private_interface }}
 {% endif %}
+
+# relayd https
+pass in on egress inet  proto tcp to port https divert-to 127.0.0.1 port {{ relayd_https_port }}
+pass in on egress inet6 proto tcp to port https divert-to ::1       port {{ relayd_https_port }}
 
 # smtp/spamd
 pass in on egress inet proto tcp to port smtp divert-to 127.0.0.1 port spamd

@@ -1,0 +1,4 @@
+---
+postgresql_socket_dirs:
+  - /tmp
+  - /var/www/tmp

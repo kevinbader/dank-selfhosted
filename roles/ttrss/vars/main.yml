@@ -1,0 +1,5 @@
+---
+ttrss_home: /var/www/htdocs/ttrss
+ttrss_fpm_sock: /var/www/run/ttrss.sock
+php_version: 7.2
+php_path: /usr/local/bin/php-{{ php_version }}
