@@ -93,12 +93,7 @@
     dest: /var/log/{{ item }}
     force: no
     mode: 0640
-  with_items:
-    - nsd
-    - postgresql
-    - prosody
-    - spamd
-    - httpd
+  with_items: '{{ syslog_log_files }}'
   notify: reload syslog
 
 - name: generate syslog configuration
@@ -112,23 +107,6 @@
     src: newsyslog.conf
     dest: /etc/newsyslog.conf
   notify: newsyslog
-
-- name: touch log files
-  copy:
-    content: ""
-    dest: /var/log/{{ item }}
-    force: no
-    owner: root
-    group: wheel
-    mode: 0640
-  with_items:
-    - spamd
-    - prosody
-    - nsd
-    - postgres
-    - httpd
-    - php-fpm
-    - relayd
 
 - name: set dank MOTD
   template:

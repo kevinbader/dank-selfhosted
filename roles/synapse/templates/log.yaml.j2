@@ -17,12 +17,13 @@ handlers:
     maxBytes: 104857600
     backupCount: 10
     filters: [context]
+    encoding: utf8
 
 loggers:
   synapse:
-    level: INFO
+    level: WARN
   synapse.storage.SQL:
-    level: INFO
+    level: WARN
 
 root:
   level: INFO

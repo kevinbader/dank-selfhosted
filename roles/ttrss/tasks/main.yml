@@ -36,6 +36,18 @@
     line: include "/etc/sites/ttrss.conf"
   notify: reload httpd
 
+- name: create php directories
+  file:
+    path: /var/www/cache/{{ item }}
+    state: directory
+    owner: _ttrss
+    group: _ttrss
+    mode: 0700
+  with_items:
+    - ttrss
+    - ttrss/session
+    - ttrss/upload
+
 - name: generate php-fpm config
   template:
     src: php/ttrss.conf.j2

@@ -16,6 +16,14 @@
     path: /etc/php-fpm.d
     state: directory
 
+- name: fix permissions on www cache directory
+  file:
+    path: /var/www/cache
+    state: directory
+    owner: root
+    group: wheel
+    mode: 01777
+
 - name: generate php.ini
   template:
     src: php.ini.j2

@@ -5,7 +5,7 @@
     dest: /etc/acme-client.conf
 
 - name: wait for DNS to propagate (checking www.{{ domain }})
-  shell: dig +short @8.8.8.8 A www.{{ domain }}
+  shell: dig +short @{{ secondary_nameservers[0] }} A www.{{ domain }}
   changed_when: False
   register: dig_domain
   until: dig_domain.stdout == ip
@@ -25,11 +25,6 @@
     creates: /etc/ssl/{{ domain }}.der
   notify: reload httpd
 
-- name: re-run NSD role to generate TLSA records
-  include_role:
-    name: nsd
-  when: acme_client.changed
-
 - name: create acme hooks directory
   file:
     path: /etc/acme/hooks.d
@@ -40,6 +35,11 @@
     src: run-hooks.sh
     dest: /etc/acme/run-hooks.sh
     mode: 0555
+
+- name: re-run NSD role to generate TLSA records
+  include_role:
+    name: nsd
+  when: acme_client.changed
 
 - name: add acme-client to crontab
   cron:

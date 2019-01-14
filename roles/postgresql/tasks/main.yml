@@ -43,7 +43,7 @@
     - pg_ident.conf
   notify: reload postgresql
 
-- name: enabled and start daemon
+- name: enable and start daemon
   service:
     name: postgresql
     enabled: yes

@@ -115,6 +115,14 @@
     mode: 0640
   notify: restart turnserver
 
+- name: create turnserver run directory
+  file:
+    path: /var/run/turnserver
+    state: directory
+    owner: root
+    group: _turnserver
+    mode: 0775
+
 - name: generate synapse rc file
   template:
     src: rc.d/synapse.j2

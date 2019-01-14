@@ -19,4 +19,6 @@ chdir = /htdocs/ttrss
 
 php_admin_value[open_basedir] = /htdocs/ttrss/;/tmp/.s.PGSQL.5432
 php_admin_value[session.name] = TTRSS
+php_admin_value[session.save_path] = /cache/ttrss/session
+php_admin_value[upload_tmp_dir] = /cache/ttrss/upload
 php_admin_value[allow_url_fopen] = On
