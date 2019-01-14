@@ -15,7 +15,7 @@ Version = 1.6.5
 
 <Listener listener0>
 	AllowIRC = true
-	AllowWeb = true
+	AllowWeb = false
 	Host = ::
 	IPv4 = false
 	IPv6 = true
@@ -26,12 +26,23 @@ Version = 1.6.5
 
 <Listener listener1>
 	AllowIRC = true
-	AllowWeb = true
+	AllowWeb = false
 	Host = 0.0.0.0
 	IPv4 = true
 	IPv6 = false
 	Port = {{ znc_port }}
 	SSL = true
+	URIPrefix = /
+</Listener>
+
+<Listener listener2>
+	AllowIRC = false
+	AllowWeb = true
+	Host = 127.0.0.1
+	IPv4 = true
+	IPv6 = false
+	Port = {{ znc_web_port }}
+	SSL = false
 	URIPrefix = /
 </Listener>
 

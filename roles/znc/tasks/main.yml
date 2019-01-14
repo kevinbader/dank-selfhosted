@@ -68,3 +68,19 @@
       echo "znc.pem regenerated"
     dest: /etc/acme/hooks.d/znc.sh
     mode: 0555
+
+- name: enable znc vhost
+  lineinfile:
+    path: /etc/httpd.d/sites.conf
+    line: include "/etc/sites/znc.conf"
+  notify: reload httpd
+
+- name: enable http to https redirect
+  copy:
+    content: |
+      server znc.{{ domain }} {
+        include "/etc/httpd.d/http.conf"
+        root "/nonexistent"
+      }
+    dest: /etc/sites/znc.conf
+  notify: reload httpd

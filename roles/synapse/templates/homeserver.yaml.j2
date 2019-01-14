@@ -7,7 +7,7 @@ tls_dh_params_path: "{{ synapse_config_dir }}/homeserver.tls.dh"
 no_tls: False
 tls_fingerprints: []
 
-pid_file: "{{ synapse_run_dir }}/synapse.pid"
+pid_file: "{{ synapse_home }}/synapse.pid"
 
 web_client: False
 public_baseurl: https://matrix.{{ domain }}:{{ synapse_federation_port }}/

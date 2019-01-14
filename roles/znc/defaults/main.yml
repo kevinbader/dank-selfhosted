@@ -1,2 +1,3 @@
 ---
 znc_port: 7666
+znc_web_port: 7667
