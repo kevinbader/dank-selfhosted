@@ -36,7 +36,14 @@
     - '{{ synapse_home }}'
     - '{{ synapse_log_dir }}'
     - '{{ synapse_config_dir }}'
-    - '{{ synapse_storage_dir }}'
+
+- name: create storage dir
+  file:
+    path: '{{ synapse_storage_dir }}'
+    state: directory
+    owner: _synapse
+    group: _synapse
+    mode: 0770
 
 - name: create private cert directory
   file:
