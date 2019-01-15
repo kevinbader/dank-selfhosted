@@ -73,19 +73,3 @@
       doas -u _prosody /usr/local/sbin/prosodyctl reload
     dest: /etc/acme/hooks.d/prosody.sh
     mode: 0555
-
-- name: enable xmpp vhost
-  lineinfile:
-    path: /etc/httpd.d/sites.conf
-    line: include "/etc/sites/xmpp.conf"
-  notify: reload httpd
-
-- name: enable http to https redirect
-  copy:
-    content: |
-      server xmpp.{{ domain }} {
-        include "/etc/httpd.d/http.conf"
-        root "/nonexistent"
-      }
-    dest: /etc/sites/xmpp.conf
-  notify: reload httpd

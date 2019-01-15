@@ -7,8 +7,3 @@
 - name: reload prosody
   command: prosodyctl reload
   become_user: _prosody
-
-- name: reload httpd
-  service:
-    name: httpd
-    state: reloaded

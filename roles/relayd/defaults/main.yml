@@ -1,6 +1,5 @@
 ---
 relayd_https_port: 8443
 httpd_secure_port: 8080
-prosody_http_port: 5280
 synapse_client_port: 8008
 znc_web_port: 7667

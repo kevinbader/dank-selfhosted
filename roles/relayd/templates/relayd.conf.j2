@@ -1,5 +1,4 @@
 table <httpd>   { 127.0.0.1 }
-table <prosody> { 127.0.0.1 }
 table <matrix>  { 127.0.0.1 }
 table <znc>     { 127.0.0.1 }
 
@@ -22,7 +21,6 @@ http protocol "http" {
   pass request quick header "Host" value "{{ domain }}"        forward to <httpd>
   pass request quick header "Host" value "www.{{ domain }}"    forward to <httpd>
   pass request quick header "Host" value "ttrss.{{ domain }}"  forward to <httpd>
-  pass request quick header "Host" value "xmpp.{{ domain }}"   forward to <prosody>
   pass request quick header "Host" value "matrix.{{ domain }}" forward to <matrix>
   pass request quick header "Host" value "znc.{{ domain }}"    forward to <znc>
 }
@@ -32,7 +30,7 @@ relay "www" {
   listen on ::1       port {{ relayd_https_port }} tls
   protocol "http"
   forward to <httpd>   port {{ httpd_secure_port }}
-  forward to <prosody> port {{ prosody_http_port }}
   forward to <matrix>  port {{ synapse_client_port }}
   forward to <znc>     port {{ znc_web_port }}
+  # sadly, prosody's http server doesnt work with relayd - returns 400/malformed
 }

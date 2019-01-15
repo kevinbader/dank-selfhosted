@@ -62,12 +62,12 @@ storage = "sql"
 sql = { driver = "PostgreSQL", database = "prosody", username = "_prosody" }
 
 -- module configs ---
-http_ports = { {{ prosody_http_port }} }
-http_interfaces = { "127.0.0.1" }
-https_interfaces = { }
-https_ports = { }
-http_external_url = "https://xmpp.{{ domain }}/"
-https_external_url = "https://xmpp.{{ domain }}/"
+http_ports = { }
+http_interfaces = { }
+https_interfaces = { "*" }
+https_ports = { 5280 }
+http_external_url = "https://xmpp.{{ domain }}:5280/"
+https_external_url = "https://xmpp.{{ domain }}:5280/"
 proxy65_ports = { {{ prosody_proxy_port }} }
 http_upload_file_size_limit = {{ prosody_upload_maxsize }}
 http_upload_expire_after = {{ prosody_upload_expiration }}
