@@ -34,10 +34,10 @@ it for your own domain by setting a few variables in `vars.yml`.
     - [spamd(8)](https://man.openbsd.org/spamd) for spam filtering
     - [nsd(8)](https://man.openbsd.org/nsd.8) for authoritative DNS server
     - [httpd(8)](https://man.openbsd.org/httpd.8) for web server
-    - [relayd(8)](https://man.openbsd.org/relayd.8) for TLS reverse proxy
     - basic [passwd(5)](https://man.openbsd.org/passwd.5) authentication for all services (maybe I should look into [ldapd(8)](https://man.openbsd.org/ldapd.8)?)
 
 - Of course, some packages from the ports tree will be necessary:
+    - [nginx](https://nginx.org) for TLS reverse proxy
     - [prosody](http://prosody.im/) for XMPP chat
     - [postgresql](https://www.postgresql.org/) for Prosody data storage
     - [ldns-utils](https://www.nlnetlabs.nl/projects/ldns/about/) for DNSSEC zone signing
