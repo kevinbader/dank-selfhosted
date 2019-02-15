@@ -1,0 +1,7 @@
+location "/.well-known/acme-challenge/*" {
+  log style combined
+  log access "acme-access.log"
+  log error  "acme-error.log"
+  root "/acme"
+  request strip 2
+}

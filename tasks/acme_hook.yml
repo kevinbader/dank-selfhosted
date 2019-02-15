@@ -1,0 +1,8 @@
+- name: add letsencrypt renewal hook
+  copy:
+    content: |
+      #!/bin/sh
+      {{ shell }}
+    dest: /etc/acme/hooks.d/{{ name }}.sh
+    mode: 0555
+

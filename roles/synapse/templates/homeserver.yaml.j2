@@ -1,16 +1,16 @@
 # vim:ft=yaml
 server_name: {{ domain }}
 
-tls_certificate_path: "{{ synapse_config_dir }}/homeserver.tls.crt"
-tls_private_key_path: "{{ synapse_config_dir }}/private/homeserver.tls.key"
-tls_dh_params_path: "{{ synapse_config_dir }}/homeserver.tls.dh"
+tls_certificate_path: "/etc/ssl/{{ domain }}.fullchain.pem"
+tls_private_key_path: "{{ synapse_config_dir }}/private/{{ domain }}.key"
+tls_dh_params_path: "/etc/ssl/dhparam.pem"
 no_tls: False
 tls_fingerprints: []
 
 pid_file: "{{ synapse_home }}/synapse.pid"
 
 web_client: False
-public_baseurl: https://matrix.{{ domain }}:{{ synapse_federation_port }}/
+public_baseurl: https://matrix.{{ domain }}/
 soft_file_limit: 0
 
 listeners:
@@ -27,9 +27,20 @@ listeners:
 
   - port: {{ synapse_client_port }}
     tls: false
-    bind_addresses: ['127.0.0.1']
+    bind_addresses: ['127.0.0.1', '::1']
     type: http
     x_forwarded: true
+    resources:
+      - names: [client]
+        compress: false
+      - names: [federation]
+        compress: false
+
+  - port: {{ synapse_client_port }}
+    tls: true
+    bind_addresses: ['{{ ip }}', '{{ ip6 }}']
+    type: http
+    x_forwarded: false
     resources:
       - names: [client]
         compress: true

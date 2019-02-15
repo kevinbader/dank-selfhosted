@@ -48,10 +48,8 @@
     name: spamd
     state: started
 
-- name: add acme hook
-  copy:
-    content: |
-      #!/bin/sh
+- include: ../../../tasks/acme_hook.yml
+  vars:
+    name: spamd
+    shell: |
       rcctl restart spamd
-    dest: /etc/acme/hooks.d/spamd.sh
-    mode: 0555

@@ -1,3 +1,4 @@
 ---
 ttrss_uid: 902
 ttrss_repo: https://git.tt-rss.org/fox/tt-rss.git
+httpd_secure_port: 8080

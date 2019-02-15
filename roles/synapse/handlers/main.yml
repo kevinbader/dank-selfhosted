@@ -13,3 +13,8 @@
   service:
     name: httpd
     state: reloaded
+
+- name: reload nginx
+  service:
+    name: nginx
+    state: reloaded

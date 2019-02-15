@@ -60,27 +60,14 @@
     enabled: yes
     state: started
 
-- name: add letsencrypt renewal hook
-  copy:
-    content: |
-      #!/bin/sh
+- include: ../../../tasks/nginx_proxy.yml
+  vars:
+    name: znc
+    port: '{{ znc_web_port }}'
+
+- include: ../../../tasks/acme_hook.yml
+  vars:
+    name: znc
+    shell: |
       cat /etc/ssl/private/{{ domain }}.key /etc/ssl/{{ domain }}.crt /etc/ssl/{{ domain }}.chain.pem > /var/znc/znc.pem
       echo "znc.pem regenerated"
-    dest: /etc/acme/hooks.d/znc.sh
-    mode: 0555
-
-- name: enable znc vhost
-  lineinfile:
-    path: /etc/httpd.d/sites.conf
-    line: include "/etc/sites/znc.conf"
-  notify: reload httpd
-
-- name: enable http to https redirect
-  copy:
-    content: |
-      server znc.{{ domain }} {
-        include "/etc/httpd.d/http.conf"
-        root "/nonexistent"
-      }
-    dest: /etc/sites/znc.conf
-  notify: reload httpd

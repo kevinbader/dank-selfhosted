@@ -2,16 +2,12 @@ server {{ domain }} {
   listen on * port 80
   root "/nonexistent"
 
-  location "/.well-known/acme-challenge/*" {
-    root "/acme"
-    request strip 2
-  }
+  include "/etc/httpd.d/acme.conf"
 
-  {% if use_mastodon %}
-  location "/.well-known/host-meta" {
-    block return 301 "https://mastodon.{{ domain }}$REQUEST_URI"
+  location "/.well-known/*" {
+    root "/htdocs/well-known"
+    request strip 1
   }
-  {% endif %}
 
   location * {
     block return 301 "https://www.{{ domain }}$REQUEST_URI"
@@ -22,11 +18,10 @@ server {{ domain }} {
   include "/etc/httpd.d/https.conf"
   root "/nonexistent"
 
-  {% if use_mastodon %}
-  location "/.well-known/host-meta" {
-    block return 301 "https://mastodon.{{ domain }}$REQUEST_URI"
+  location "/.well-known/*" {
+    root "/htdocs/well-known"
+    request strip 1
   }
-  {% endif %}
 
   location * {
     block return 301 "https://www.{{ domain }}$REQUEST_URI"

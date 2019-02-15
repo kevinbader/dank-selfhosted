@@ -139,18 +139,37 @@
     enabled: yes
     state: started
 
-- name: generate matrix vhost
+- name: add well-known directory
+  file:
+    path: /var/www/htdocs/well-known/matrix
+    state: directory
+
+- name: add well-known json file
   copy:
     content: |
-      server matrix.{{ domain }} {
-        include "/etc/httpd.d/http.conf"
-        root "/nonexistent"
+      {
+        "m.homeserver": {
+          "base_url": "https://matrix.{{ domain }}:{{ synapse_client_port }}"
+        },
+        "m.identity_server": {
+          "base_url": "https://vector.im"
+        }
       }
-    dest: /etc/sites/matrix.conf
-  notify: reload httpd
+    dest: /var/www/htdocs/well-known/matrix/client
 
-- name: enable matrix vhost
-  lineinfile:
-    path: /etc/httpd.d/sites.conf
-    line: include "/etc/sites/matrix.conf"
-  notify: reload httpd
+- include: ../../../tasks/nginx_proxy.yml
+  vars:
+    name: matrix
+    port: '{{ synapse_client_port }}'
+    max_body_size: 50m
+
+- include: ../../../tasks/acme_hook.yml
+  vars:
+    name: synapse
+    shell: |
+      SRC="/etc/ssl/private/{{ domain }}.key"
+      DST="/etc/synapse/private/{{ domain }}.key"
+      cp "$SRC" "$DST"
+      chown root:_synapse "$DST"
+      chmod 640 "$DST"
+      rcctl restart synapse

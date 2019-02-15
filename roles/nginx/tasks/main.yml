@@ -1,0 +1,52 @@
+---
+- name: install nginx
+  openbsd_pkg:
+    name: nginx
+    state: installed
+
+- name: chown logs directory
+  file:
+    path: /var/www/logs
+    state: directory
+    owner: www
+    group: wheel
+
+- name: create nginx log directory
+  file:
+    path: /var/www/logs/nginx
+    state: directory
+    owner: www
+    group: wheel
+
+- name: create sites directory
+  file:
+    path: /etc/nginx/sites
+    state: directory
+
+- name: generate nginx.conf
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+  notify: reload nginx
+
+- include: ../../../tasks/nginx_proxy.yml
+  vars:
+    name: www
+    port: '{{ httpd_secure_port }}'
+
+- include: ../../../tasks/nginx_proxy.yml
+  vars:
+    bare: true
+    port: '{{ httpd_secure_port }}'
+
+- name: start nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- include: ../../../tasks/acme_hook.yml
+  vars:
+    name: nginx
+    shell: |
+      rcctl reload nginx

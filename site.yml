@@ -11,7 +11,7 @@
     - { role: nsd,        tags: ['nsd']        }
     - { role: httpd,      tags: ['httpd']      }
     - { role: acme,       tags: ['acme']       }
-    - { role: relayd,     tags: ['relayd']     }
+    - { role: nginx,      tags: ['nginx']      }
     - { role: dovecot,    tags: ['dovecot']    }
     - { role: smtpd,      tags: ['smtpd']      }
     - { role: spamd,      tags: ['spamd']      }

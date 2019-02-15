@@ -7,3 +7,8 @@
 - name: reload prosody
   command: prosodyctl reload
   become_user: _prosody
+
+- name: reload nginx
+  service:
+    name: nginx
+    state: reloaded

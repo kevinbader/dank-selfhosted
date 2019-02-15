@@ -4,6 +4,11 @@
     name: httpd
     state: reloaded
 
+- name: reload nginx
+  service:
+    name: nginx
+    state: reloaded
+
 - name: restart php-fpm
   service:
     name: php72_fpm

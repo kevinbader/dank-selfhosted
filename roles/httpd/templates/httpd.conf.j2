@@ -4,17 +4,14 @@ types {
 
 server "default" {
   listen on * port 80
-  log style combined
+  no log
 
   root "/nonexistent"
 
-  location "/.well-known/acme-challenge/*" {
-    root "/acme"
-    request strip 2
-  }
+  include "/etc/httpd.d/acme.conf"
 
   location * {
-    block return 301 "https://www.{{ domain }}"
+    block return 301 "https://$HTTP_HOST$REQUEST_URI"
   }
 }
 

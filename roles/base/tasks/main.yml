@@ -112,3 +112,8 @@
   template:
     src: motd.j2
     dest: /etc/motd
+
+- name: generate dhparams
+  command: openssl dhparam -out /etc/ssl/dhparam.pem 2048
+  args:
+    creates: /etc/ssl/dhparam.pem

@@ -13,13 +13,18 @@
     dest: /etc/httpd.d/sites.conf
     force: no
 
+- name: create well-known directory
+  file:
+    path: /var/www/htdocs/well-known
+    state: directory
+
 - name: generate configuration
   template:
     src: '{{ item.0 }}.j2'
     dest: '{{ item.1 }}/{{ item.0 }}'
   with_together:
-    - [ 'httpd.conf', 'http.conf',    'https.conf'   ]
-    - [ '/etc',       '/etc/httpd.d', '/etc/httpd.d' ]
+    - [ 'httpd.conf', 'http.conf',    'https.conf',   'acme.conf'     ]
+    - [ '/etc',       '/etc/httpd.d', '/etc/httpd.d', '/etc/httpd.d' ]
   notify: reload httpd
 
 - name: enable daemon

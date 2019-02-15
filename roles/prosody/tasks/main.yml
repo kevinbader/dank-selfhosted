@@ -62,14 +62,18 @@
     enabled: yes
     state: started
 
-- name: add letsencrypt renewal hook
-  copy:
-    content: |
-      #!/bin/sh
+- include: ../../../tasks/nginx_proxy.yml
+  vars:
+    name: xmpp
+    port: '{{ prosody_http_port }}'
+    max_body_size: 50m
+
+- include: ../../../tasks/acme_hook.yml
+  vars:
+    name: prosody
+    shell: |
       cp /etc/ssl/{{ domain }}.fullchain.pem /etc/prosody/certs/{{ domain }}.crt
       cp /etc/ssl/private/{{ domain }}.key /etc/prosody/certs/{{ domain }}.key
       chown root:_prosody /etc/prosody/certs/*
       chmod 640 /etc/prosody/certs/*
       doas -u _prosody /usr/local/sbin/prosodyctl reload
-    dest: /etc/acme/hooks.d/prosody.sh
-    mode: 0555
