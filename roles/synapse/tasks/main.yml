@@ -149,7 +149,7 @@
     content: |
       {
         "m.homeserver": {
-          "base_url": "https://matrix.{{ domain }}:{{ synapse_client_port }}"
+          "base_url": "https://matrix.{{ domain }}"
         },
         "m.identity_server": {
           "base_url": "https://vector.im"
@@ -162,14 +162,3 @@
     name: matrix
     port: '{{ synapse_client_port }}'
     max_body_size: 50m
-
-- include: ../../../tasks/acme_hook.yml
-  vars:
-    name: synapse
-    shell: |
-      SRC="/etc/ssl/private/{{ domain }}.key"
-      DST="/etc/synapse/private/{{ domain }}.key"
-      cp "$SRC" "$DST"
-      chown root:_synapse "$DST"
-      chmod 640 "$DST"
-      rcctl restart synapse

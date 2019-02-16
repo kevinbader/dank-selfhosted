@@ -1,4 +1,4 @@
-inbound_tcp = "{ http, https, submission, imaps, domain, xmpp-client, xmpp-server, {{ prosody_proxy_port }}, {{ znc_port }}, {{ sshd_port }}, {{ synapse_turn_port }}, {{ synapse_federation_port }}, {{ synapse_client_port }} }"
+inbound_tcp = "{ http, https, submission, imaps, domain, xmpp-client, xmpp-server, {{ prosody_proxy_port }}, {{ znc_port }}, {{ sshd_port }}, {{ synapse_turn_port }}, {{ synapse_federation_port }} }"
 inbound_udp = "{ domain, {{ synapse_turn_port }} }"
 
 {% if open_ports %}

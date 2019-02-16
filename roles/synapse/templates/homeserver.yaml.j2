@@ -1,9 +1,9 @@
 # vim:ft=yaml
 server_name: {{ domain }}
 
-tls_certificate_path: "/etc/ssl/{{ domain }}.fullchain.pem"
-tls_private_key_path: "{{ synapse_config_dir }}/private/{{ domain }}.key"
-tls_dh_params_path: "/etc/ssl/dhparam.pem"
+tls_certificate_path: "{{ synapse_config_dir }}/homeserver.tls.crt"
+tls_private_key_path: "{{ synapse_config_dir }}/private/homeserver.tls.key"
+tls_dh_params_path: "{{ synapse_config_dir }}/homeserver.tls.dh"
 no_tls: False
 tls_fingerprints: []
 
@@ -33,17 +33,6 @@ listeners:
     resources:
       - names: [client]
         compress: false
-      - names: [federation]
-        compress: false
-
-  - port: {{ synapse_client_port }}
-    tls: true
-    bind_addresses: ['{{ ip }}', '{{ ip6 }}']
-    type: http
-    x_forwarded: false
-    resources:
-      - names: [client]
-        compress: true
       - names: [federation]
         compress: false
 
