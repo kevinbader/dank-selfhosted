@@ -11,13 +11,6 @@
     owner: www
     group: wheel
 
-- name: create nginx log directory
-  file:
-    path: /var/www/logs/nginx
-    state: directory
-    owner: www
-    group: wheel
-
 - name: create sites directory
   file:
     path: /etc/nginx/sites

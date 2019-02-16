@@ -59,6 +59,7 @@
     virtualenv: '{{ synapse_home }}'
     virtualenv_python: python3.6
     virtualenv_command: virtualenv-3
+    state: latest
   become_user: _synapse
   environment:
     HOME: '{{ synapse_home }}'
@@ -66,6 +67,7 @@
     - lxml
     - matrix-synapse
     - psycopg2
+  notify: restart synapse
 
 - name: create database user
   postgresql_user:
@@ -161,4 +163,16 @@
   vars:
     name: matrix
     port: '{{ synapse_client_port }}'
-    max_body_size: 50m
+    max_body_size: '{{ synapse_max_upload_size }}'
+
+- include: ../../../tasks/acme_hook.yml
+  vars:
+    name: synapse
+    shell: |
+      SRC="/etc/ssl/private/{{ domain }}.key"
+      DST="/etc/synapse/private/{{ domain }}.key"
+      cp "$SRC" "$DST"
+      chown root:_synapse "$DST"
+      chmod 640 "$DST"
+      rcctl restart synapse
+

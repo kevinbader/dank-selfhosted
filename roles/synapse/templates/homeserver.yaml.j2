@@ -1,9 +1,10 @@
 # vim:ft=yaml
 server_name: {{ domain }}
 
-tls_certificate_path: "{{ synapse_config_dir }}/homeserver.tls.crt"
-tls_private_key_path: "{{ synapse_config_dir }}/private/homeserver.tls.key"
-tls_dh_params_path: "{{ synapse_config_dir }}/homeserver.tls.dh"
+tls_certificate_path: "/etc/ssl/{{ domain }}.fullchain.pem"
+tls_private_key_path: "{{ synapse_config_dir }}/private/{{ domain }}.key"
+tls_dh_params_path: "/etc/ssl/dhparam.pem"
+
 no_tls: False
 tls_fingerprints: []
 
