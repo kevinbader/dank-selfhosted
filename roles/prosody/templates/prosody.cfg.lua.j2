@@ -20,7 +20,6 @@ modules_enabled = {
   "dialback";
   "disco";
   "carbons";
-  "pep";
   "private";
   "blocklist";
   "vcard";
@@ -42,6 +41,7 @@ modules_enabled = {
   "omemo_all_access";
   "cloud_notify";
   "idlecompat";
+  "pep";
   "pep_vcard_avatar";
   "delay";
 }
@@ -82,3 +82,4 @@ VirtualHost "{{ domain }}"
 Component "conference.{{ domain }}" "muc"
   modules_enabled = { "mam_muc" }
 Component "proxy.{{ domain }}" "proxy65"
+Component "pubsub.{{ domain }}" "pubsub"
