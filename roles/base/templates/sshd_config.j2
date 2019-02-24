@@ -11,3 +11,9 @@ VersionAddendum none
 Subsystem	sftp	internal-sftp
 
 AllowGroups ssh _gitea
+
+Match Group _gitea
+  AllowTcpForwarding no
+  X11Forwarding no
+  AllowAgentForwarding no
+  PermitTTY no
