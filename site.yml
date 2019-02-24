@@ -21,3 +21,4 @@
     - { role: php,        tags: ['php']        }
     - { role: ttrss,      tags: ['ttrss']      }
     - { role: synapse,    tags: ['synapse']    }
+    - { role: gitea,      tags: ['gitea']      }

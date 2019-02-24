@@ -1,0 +1,51 @@
+---
+- name: install gitea
+  openbsd_pkg:
+    name: gitea
+    state: installed
+
+- name: configure gitea user
+  user:
+    name: _gitea
+    shell: /usr/local/bin/bash
+    groups: www
+    append: yes
+
+- name: fix permissions
+  file:
+    path: /var/gitea
+    owner: _gitea
+    group: _gitea
+    recurse: yes
+
+- name: create database user
+  postgresql_user:
+    name: _gitea
+  become_user: _postgresql
+
+- name: create database
+  postgresql_db:
+    name: gitea
+    owner: _gitea
+  become_user: _postgresql
+
+- name: generate gitea configuration
+  template:
+    src: app.ini.j2
+    dest: /etc/gitea/conf/app.ini
+    owner: _gitea
+    group: _gitea
+    mode: 0640
+  # sadly this file gets regenerated on each restart with different secret keys
+  changed_when: False
+
+- include: ../../../tasks/nginx_proxy.yml
+  vars:
+    name: git
+    socket: /run/git.sock
+
+- name: start and enable gitea
+  service:
+    name: gitea
+    enabled: yes
+    state: started

@@ -4,13 +4,6 @@
     name: nginx
     state: installed
 
-- name: chown logs directory
-  file:
-    path: /var/www/logs
-    state: directory
-    owner: www
-    group: wheel
-
 - name: create sites directory
   file:
     path: /etc/nginx/sites

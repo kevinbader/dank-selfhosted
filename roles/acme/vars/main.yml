@@ -7,3 +7,4 @@ acme_alt_names:
   - vpn
   - ttrss
   - matrix
+  - git

@@ -7,14 +7,11 @@
     - postgresql-server
     - postgresql-client
 
-- name: create socket directories
-  file:
-    path: '{{ item }}'
-    state: directory
-    mode: 01777
-    owner: root
-    group: wheel
-  with_items: '{{ postgresql_socket_dirs }}'
+- name: add postgres user to www group
+  user:
+    name: _postgresql
+    groups: www
+    append: yes
 
 - name: initialize database
   command: initdb -D /var/postgresql/data -U postgres -E UTF8 -A peer

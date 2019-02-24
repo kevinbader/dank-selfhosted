@@ -34,8 +34,15 @@
     mode: 0775
   with_items:
     - '{{ synapse_home }}'
-    - '{{ synapse_log_dir }}'
     - '{{ synapse_config_dir }}'
+
+- name: create synapse log directory
+  file:
+    path: '{{ synapse_log_dir }}'
+    state: directory
+    owner: _synapse
+    group: wheel
+    mode: 0750
 
 - name: create storage dir
   file:

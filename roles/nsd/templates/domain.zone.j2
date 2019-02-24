@@ -40,6 +40,8 @@ matrix IN A {{ ip }}
 matrix IN AAAA {{ ip6 }}
 turn IN A {{ ip }}
 turn IN AAAA {{ ip6 }}
+git IN A {{ ip }}
+git IN AAAA {{ ip6 }}
 
 {% for name, record in (a_records | default({})).iteritems() %}
 {{ name }} IN A {{ record.ip }}

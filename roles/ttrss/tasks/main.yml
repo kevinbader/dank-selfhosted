@@ -81,7 +81,7 @@
     state: directory
     owner: root
     group: _ttrss
-    mode: 0775
+    mode: 0770
   with_items:
     - cache
     - cache/images

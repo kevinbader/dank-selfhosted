@@ -117,3 +117,30 @@
   command: openssl dhparam -out /etc/ssl/dhparam.pem 2048
   args:
     creates: /etc/ssl/dhparam.pem
+
+- name: set up permissions on /var/www/{tmp,run}
+  file:
+    path: /var/www/{{ item }}
+    state: directory
+    mode: 01775
+    owner: www
+    group: www
+  with_items:
+    - tmp
+    - run
+
+- name: set up permissions on /var/www/cache
+  file:
+    path: /var/www/cache
+    state: directory
+    mode: 0755
+    owner: root
+    group: daemon
+
+- name: chown /var/www/logs
+  file:
+    path: /var/www/logs
+    state: directory
+    mode: 0750
+    owner: www
+    group: wheel

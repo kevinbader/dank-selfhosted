@@ -1,0 +1,302 @@
+APP_NAME = git.{{ domain }}
+RUN_USER = _gitea
+RUN_MODE = prod
+
+[repository]
+ROOT = /var/gitea/gitea-repositories
+SCRIPT_TYPE = bash
+ANSI_CHARSET =
+FORCE_PRIVATE = false
+DEFAULT_PRIVATE = last
+MAX_CREATION_LIMIT = -1
+MIRROR_QUEUE_LENGTH = 1000
+PULL_REQUEST_QUEUE_LENGTH = 1000
+PREFERRED_LICENSES = Apache License 2.0,MIT License
+DISABLE_HTTP_GIT = false
+USE_COMPAT_SSH_URI = false
+
+[repository.editor]
+LINE_WRAP_EXTENSIONS = .txt,.md,.markdown,.mdown,.mkd,
+PREVIEWABLE_FILE_MODES = markdown
+
+[repository.local]
+LOCAL_COPY_PATH = tmp/local-repo
+LOCAL_WIKI_PATH = tmp/local-wiki
+
+[repository.upload]
+ENABLED = true
+TEMP_PATH = /var/gitea/data/tmp/uploads
+ALLOWED_TYPES =
+FILE_MAX_SIZE = 5
+MAX_FILES = 5
+
+[ui]
+EXPLORE_PAGING_NUM = 20
+ISSUE_PAGING_NUM = 10
+FEED_MAX_COMMIT_NUM = 5
+THEME_COLOR_META_TAG = `#6cc644`
+MAX_DISPLAY_FILE_SIZE = 8388608
+SHOW_USER_EMAIL = true
+
+[ui.admin]
+USER_PAGING_NUM = 50
+REPO_PAGING_NUM = 50
+NOTICE_PAGING_NUM = 25
+ORG_PAGING_NUM = 50
+
+[ui.user]
+REPO_PAGING_NUM = 15
+
+[ui.meta]
+AUTHOR = Gitea - Git with a cup of tea
+DESCRIPTION = Gitea (Git with a cup of tea) is a painless self-hosted Git service written in Go
+KEYWORDS = go,git,self-hosted,gitea
+
+[markdown]
+; Enable hard line break extension
+ENABLE_HARD_LINE_BREAK = false
+CUSTOM_URL_SCHEMES =
+FILE_EXTENSIONS = .md,.markdown,.mdown,.mkd
+
+[server]
+PROTOCOL = unix
+DOMAIN = git.{{ domain }}
+ROOT_URL = https://git.{{ domain }}
+HTTP_ADDR = /var/www/run/git.sock
+HTTP_PORT = 0
+REDIRECT_OTHER_PORT = false
+UNIX_SOCKET_PERMISSION = 666
+DISABLE_SSH = false
+SSH_DOMAIN = %(DOMAIN)s
+SSH_PORT = {{ sshd_port }}
+SSH_ROOT_PATH =
+SSH_KEY_TEST_PATH =
+SSH_KEYGEN_PATH = ssh-keygen
+SSH_BACKUP_AUTHORIZED_KEYS = true
+SSH_EXPOSE_ANONYMOUS = false
+MINIMUM_KEY_SIZE_CHECK = false
+OFFLINE_MODE = false
+DISABLE_ROUTER_LOG = false
+STATIC_ROOT_PATH =
+APP_DATA_PATH = /var/gitea/data
+ENABLE_GZIP = false
+LANDING_PAGE = explore
+LFS_START_SERVER = false
+
+[ssh.minimum_key_sizes]
+ED25519 = 256
+ECDSA = 256
+RSA = 2048
+DSA = -1
+
+[database]
+DB_TYPE = postgres
+HOST = /tmp/
+NAME = gitea
+USER = _gitea
+PASSWD =
+SSL_MODE = disable
+ITERATE_BUFFER_SIZE = 50
+LOG_SQL = true
+
+[indexer]
+ISSUE_INDEXER_PATH = /var/gitea/indexers/issues.bleve
+REPO_INDEXER_ENABLED = false
+REPO_INDEXER_PATH = indexers/repos.bleve
+UPDATE_BUFFER_LEN = 20
+MAX_FILE_SIZE = 1048576
+
+[admin]
+DISABLE_REGULAR_ORG_CREATION = false
+
+[security]
+INSTALL_LOCK = true
+LOGIN_REMEMBER_DAYS = 7
+COOKIE_USERNAME = git.{{ domain }}_username
+COOKIE_REMEMBER_NAME = git.{{ domain }}_remember
+REVERSE_PROXY_AUTHENTICATION_USER =
+MIN_PASSWORD_LENGTH = 12
+IMPORT_LOCAL_PATHS = false
+DISABLE_GIT_HOOKS = false
+
+[openid]
+ENABLE_OPENID_SIGNIN = false
+
+
+[service]
+ACTIVE_CODE_LIVE_MINUTES = 180
+RESET_PASSWD_CODE_LIVE_MINUTES = 180
+REGISTER_EMAIL_CONFIRM = false
+DISABLE_REGISTRATION = true
+ALLOW_ONLY_EXTERNAL_REGISTRATION = false
+REQUIRE_SIGNIN_VIEW = false
+; Mail notification
+ENABLE_NOTIFY_MAIL = true
+ENABLE_REVERSE_PROXY_AUTHENTICATION = false
+ENABLE_REVERSE_PROXY_AUTO_REGISTRATION = false
+ENABLE_CAPTCHA = false
+DEFAULT_KEEP_EMAIL_PRIVATE = false
+DEFAULT_ALLOW_CREATE_ORGANIZATION = true
+ENABLE_TIMETRACKING = true
+DEFAULT_ENABLE_TIMETRACKING = true
+DEFAULT_ALLOW_ONLY_CONTRIBUTORS_TO_TRACK_TIME = true
+NO_REPLY_ADDRESS = noreply.{{ domain }}
+
+[webhook]
+QUEUE_LENGTH = 1000
+DELIVER_TIMEOUT = 5
+SKIP_TLS_VERIFY = false
+PAGING_NUM = 10
+
+[mailer]
+ENABLED = true
+SEND_BUFFER_LEN = 100
+SUBJECT = %(APP_NAME)s
+FROM = `"git.{{ domain }}" <git-noreply@{{ domain }}>`
+SEND_AS_PLAIN_TEXT = false
+USE_SENDMAIL = true
+SENDMAIL_PATH = sendmail
+SENDMAIL_ARGS =
+
+[cache]
+ADAPTER = memory
+INTERVAL = 60
+ITEM_TTL = 16h
+
+[session]
+PROVIDER = file
+PROVIDER_CONFIG = /var/gitea/data/sessions
+COOKIE_NAME = git.{{ domain }}_session
+COOKIE_SECURE = true
+ENABLE_SET_COOKIE = true
+GC_INTERVAL_TIME = 86400
+SESSION_LIFE_TIME = 604800
+
+[picture]
+AVATAR_UPLOAD_PATH = /var/gitea/data/avatars
+AVATAR_MAX_WIDTH = 4096
+AVATAR_MAX_HEIGHT = 3072
+GRAVATAR_SOURCE = gravatar
+DISABLE_GRAVATAR = false
+ENABLE_FEDERATED_AVATAR = false
+
+[attachment]
+ENABLED = true
+PATH = /var/gitea/data/attachments
+ALLOWED_TYPES = image/jpeg|image/png|application/zip|application/gzip
+MAX_SIZE = 4
+MAX_FILES = 5
+
+[time]
+FORMAT = RFC1123
+
+[log]
+ROOT_PATH = /var/gitea/log
+MODE = file
+BUFFER_LEN = 10000
+LEVEL = Info
+
+[log.file]
+LEVEL =
+LOG_ROTATE = true
+MAX_LINES = 1000000
+; Max size shift of a single file, default is 28 means 1 << 28, 256MB
+MAX_SIZE_SHIFT = 28
+DAILY_ROTATE = true
+MAX_DAYS = 7
+
+[cron]
+ENABLED = true
+RUN_AT_START = false
+
+[cron.update_mirrors]
+SCHEDULE = @every 10m
+
+[cron.repo_health_check]
+SCHEDULE = @every 24h
+TIMEOUT = 60s
+; Arguments for command 'git fsck', e.g. "--unreachable --tags"
+ARGS =
+
+[cron.check_repo_stats]
+RUN_AT_START = true
+SCHEDULE = @every 24h
+
+[cron.archive_cleanup]
+ENABLED = true
+RUN_AT_START = true
+SCHEDULE = @every 24h
+OLDER_THAN = 24h
+
+[cron.sync_external_users]
+RUN_AT_START = false
+SCHEDULE = @every 24h
+UPDATE_EXISTING = true
+
+[git]
+DISABLE_DIFF_HIGHLIGHT = false
+MAX_GIT_DIFF_LINES = 1000
+MAX_GIT_DIFF_LINE_CHARACTERS = 5000
+MAX_GIT_DIFF_FILES = 100
+; Arguments for command 'git gc', e.g. "--aggressive --auto"
+GC_ARGS =
+
+[git.timeout]
+MIGRATE = 600
+MIRROR = 300
+CLONE = 300
+PULL = 300
+GC = 60
+
+[mirror]
+DEFAULT_INTERVAL = 8h
+MIN_INTERVAL = 10m
+
+[api]
+ENABLE_SWAGGER_ENDPOINT = true
+MAX_RESPONSE_ITEMS = 50
+
+[i18n]
+LANGS = en-US,zh-CN,zh-HK,zh-TW,de-DE,fr-FR,nl-NL,lv-LV,ru-RU,uk-UA,ja-JP,es-ES,pt-BR,pl-PL,bg-BG,it-IT,fi-FI,tr-TR,cs-CZ,sr-SP,sv-SE,ko-KR
+NAMES = English,简体中文,繁體中文（香港）,繁體中文（台灣）,Deutsch,français,Nederlands,latviešu,русский,Українська,日本語,español,português do Brasil,polski,български,italiano,suomi,Türkçe,čeština,српски,svenska,한국어
+
+[i18n.datelang]
+en-US = en
+zh-CN = zh
+zh-HK = zh-HK
+zh-TW = zh-TW
+de-DE = de
+fr-FR = fr
+nl-NL = nl
+lv-LV = lv
+ru-RU = ru
+uk-UA = uk
+ja-JP = ja
+es-ES = es
+pt-BR = pt-BR
+pl-PL = pl
+bg-BG = bg
+it-IT = it
+fi-FI = fi
+tr-TR = tr
+cs-CZ = cs-CZ
+sr-SP = sr
+sv-SE = sv
+ko-KR = ko
+
+[U2F]
+APP_ID = https://git.{{ domain }}/
+TRUSTED_FACETS = https://git.{{ domain }}/
+
+[highlight.mapping]
+
+[other]
+SHOW_FOOTER_BRANDING = false
+SHOW_FOOTER_VERSION = false
+SHOW_FOOTER_TEMPLATE_LOAD_TIME = false
+
+[markup.asciidoc]
+ENABLED = false
+FILE_EXTENSIONS = .adoc,.asciidoc
+RENDER_COMMAND = asciidoc --out-file=- -
+IS_INPUT_FILE = false
