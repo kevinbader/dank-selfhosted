@@ -3,7 +3,7 @@
 <img src="https://i.imgur.com/A46hkpd.gif" width="300">
 
 Hi! This is my ansible playbook for self-hosting your own email, web hosting, XMPP chat,
-Matrix Homeserver, Tiny Tiny RSS, and and DNS records using [OpenBSD](https://www.openbsd.org/).
+Matrix Homeserver, Tiny Tiny RSS, Git repos, and and DNS records using [OpenBSD](https://www.openbsd.org/).
 I use it to host everything on [c0ffee.net](https://www.c0ffee.net), but you can easily adapt 
 it for your own domain by setting a few variables in `vars.yml`.
 
@@ -47,6 +47,7 @@ it for your own domain by setting a few variables in `vars.yml`.
 - And some third-party projects not currently in packages:
     - [synapse](https://github.com/matrix-org/synapse) for running your own [Matrix](https://matrix.org) homeserver
     - [Tiny Tiny RSS](https://tt-rss.org) as a personal RSS aggregator
+    - [Gitea](https://gitea.io) for your Git repositiories.
 
 - Encryption Everywhere:
     - Automated DNSSEC with `nsd` and cron tasks using `ldns-signzone` for daily zone re-signing and slave `NOTIFYs`
