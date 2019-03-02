@@ -1,0 +1,32 @@
+domain "{{ domain }}"
+interval {{ ypldap_sync_interval }}
+
+provide map "passwd.byname"
+provide map "passwd.byuid"
+provide map "group.byname"
+provide map "group.bygid"
+provide map "netid.byname"
+
+directory "localhost" {
+  basedn   "ou=users,{{ basedn }}"
+  groupdn  "ou=groups,{{ basedn }}"
+
+  passwd filter "(objectClass=posixAccount)"
+  group  filter "(objectClass=posixGroup)"
+
+  attribute name         maps to "uid"
+  attribute uid          maps to "uidNumber"
+  attribute gid          maps to "gidNumber"
+  attribute gecos        maps to "cn"
+  attribute home         maps to "homeDirectory"
+  attribute shell        maps to "loginShell"
+  attribute groupname    maps to "cn"
+  attribute groupgid     maps to "gidNumber"
+  list      groupmembers maps to "memberUid"
+
+  fixed attribute passwd      "*"
+  fixed attribute class       "ldap"
+  fixed attribute grouppasswd "*"
+  fixed attribute change      "0"
+  fixed attribute expire      "0"
+}

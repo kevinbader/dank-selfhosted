@@ -1,0 +1,25 @@
+listen on "/var/run/ldapi"
+listen on "/var/www/run/ldapi"
+listen on lo0 secure
+
+schema "/etc/ldap/core.schema"
+schema "/etc/ldap/inetorgperson.schema"
+schema "/etc/ldap/nis.schema"
+schema "/etc/ldap/dank.schema"
+schema "/etc/ldap/openssh-lpk.schema"
+
+namespace "{{ basedn }}" {
+  rootdn "{{ ldap_rootdn }}"
+  rootpw "{CRYPT}{{ lookup('pipe', 'encrypt -b a ' + ldap_rootpw|quote ) }}"
+
+  {% for i in ldap_indexes %}
+  index {{ i }}
+  {% endfor %}
+
+  deny access to any by any
+  allow to any by "uid={{ username }},ou=users,{{ basedn }}"
+  allow bind access to children of "ou=users,{{ basedn }}" by any
+  allow read access to children of "ou=users,{{ basedn }}" by any
+  allow read access to children of "ou=groups,{{ basedn }}" by any
+  allow read access to any by any
+}

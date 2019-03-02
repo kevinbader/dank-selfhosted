@@ -63,9 +63,9 @@
     src: hosts.j2
     dest: /etc/hosts
 
-- name: copy login.conf
-  copy:
-    src: login.conf
+- name: generate login.conf
+  template:
+    src: login.conf.j2
     dest: /etc/login.conf
   notify: rebuild login database
 

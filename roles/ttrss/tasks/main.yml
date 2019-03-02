@@ -70,6 +70,16 @@
     repo: '{{ ttrss_repo }}'
     dest: '{{ ttrss_home }}'
 
+- name: create auth_ldap plugin directory
+  file:
+    path: '{{ ttrss_home }}/plugins.local/auth_ldap'
+    state: directory
+
+- name: install auth_ldap plugin
+  get_url:
+    url: https://raw.githubusercontent.com/hydrian/TTRSS-Auth-LDAP/master/plugins/auth_ldap/init.php
+    dest: '{{ ttrss_home }}/plugins.local/auth_ldap/init.php'
+
 - name: generate config.php
   template:
     src: config.php.j2

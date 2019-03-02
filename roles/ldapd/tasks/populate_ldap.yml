@@ -1,0 +1,25 @@
+---
+- name: create basedn
+  ldap_entry:
+    bind_dn: '{{ ldap_rootdn }}'
+    bind_pw: '{{ ldap_rootpw }}'
+    dn: '{{ basedn }}'
+    objectClass:
+      - organization
+      - dcObject
+    attributes:
+      dc: '{{ domain.split(".")[0] }}'
+      o: '{{ domain }}'
+
+- name: create OUs
+  ldap_entry:
+    bind_dn: '{{ ldap_rootdn }}'
+    bind_pw: '{{ ldap_rootpw }}'
+    dn: ou={{ item }},{{ basedn }}
+    objectClass: organizationalUnit
+    attributes:
+      ou: '{{ item }}'
+  with_items:
+    - users
+    - groups
+    - services

@@ -22,3 +22,4 @@
     - { role: ttrss,      tags: ['ttrss']      }
     - { role: synapse,    tags: ['synapse']    }
     - { role: gitea,      tags: ['gitea']      }
+    - { role: ldapd,      tags: ['ldapd']      }

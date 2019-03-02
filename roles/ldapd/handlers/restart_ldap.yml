@@ -1,0 +1,25 @@
+---
+- name: stop ypbind
+  service:
+    name: ypbind
+    state: stopped
+
+- name: stop ypldap
+  service:
+    name: ypldap
+    state: stopped
+
+- name: restart ldapd
+  service:
+    name: ldapd
+    state: restarted
+
+- name: start ypldap
+  service:
+    name: ypldap
+    state: started
+
+- name: start ypbind
+  service:
+    name: ypbind
+    state: started

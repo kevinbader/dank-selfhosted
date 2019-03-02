@@ -10,6 +10,7 @@
     - php-curl
     - php-gd
     - php-pcntl
+    - php-ldap
 
 - name: create directories
   file:

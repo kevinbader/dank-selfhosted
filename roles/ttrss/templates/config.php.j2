@@ -31,7 +31,18 @@
   define('CHECK_FOR_UPDATES', true);
 
   define('ENABLE_GZIP_OUTPUT', false);
-  define('PLUGINS', 'auth_internal, note');
+  define('PLUGINS', 'auth_ldap, auth_internal, note');
   define('LOG_DESTINATION', '');
   define('CONFIG_VERSION', 26);
+
+  define('LDAP_AUTH_SERVER_URI', 'ldap://127.0.0.1:389/');
+  define('LDAP_AUTH_USETLS', FALSE);
+  define('LDAP_AUTH_ALLOW_UNTRUSTED_CERT', FALSE);
+  define('LDAP_AUTH_BASEDN', 'ou=users,{{ basedn }}');
+  define('LDAP_AUTH_ANONYMOUSBEFOREBIND', FALSE);
+  define('LDAP_AUTH_SEARCHFILTER', '(&(objectClass=inetOrgPerson)(uid=???))');
+  define('LDAP_AUTH_LOGIN_ATTRIB', 'uid');
+  define('LDAP_AUTH_LOG_ATTEMPTS', TRUE);
+  define('LDAP_AUTH_DEBUG', FALSE);
+
   // vim:ft=php

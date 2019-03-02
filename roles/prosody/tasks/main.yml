@@ -7,6 +7,7 @@
     - prosody
     - luadbi-pgsql
     - mercurial
+    - lualdap
 
 - name: remove localhost certificates
   file:

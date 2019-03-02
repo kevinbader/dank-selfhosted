@@ -48,8 +48,9 @@ modules_enabled = {
 
 allow_registration = false
 
-authentication = "dovecot"
-dovecot_auth_socket = "/var/prosody/dovecot-auth"
+authentication = "ldap"
+ldap_base = "ou=users,{{ basedn }}"
+ldap_filter = "(&(objectClass=inetOrgPerson)(uid=$user))"
 
 c2s_require_encryption = true
 s2s_require_encryption = true
