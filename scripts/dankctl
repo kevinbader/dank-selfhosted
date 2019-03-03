@@ -21,6 +21,12 @@
 #      - nis
 #      - openssh-lpk (https://code.google.com/archive/p/openssh-lpk/)
 #      - a custom schema which provides the "role" attribute (I use a custom dankUser objectclass)
+#
+# Notes:
+#   - OpenBSD ldapd(8) does not support deleting a specific instance of an
+#     attribute - it's all or nothing. In some cases we have to save the
+#     current values, munge them, and then restore.
+#   - This script is a hideous monster. Needs some refactoring.
 
 use strict;
 use warnings;
@@ -223,14 +229,18 @@ sub add_group {
   return { error => "gid $gid already exists" } if get_group({gid => $gid})->{result};
   return { error => "group '$groupname' already exists" } if get_group({groupname => $groupname})->{result};
 
+  my @attrs = (
+    objectclass => 'posixGroup',
+    cn          => $groupname,
+    gidNumber   => $gid
+  );
+  push @attrs, memberUid   => $args->{members}     if $args->{members};
+  push @attrs, description => $args->{description} if $args->{description};
+
   return ldap_add({
     dn => $dn,
-    attrs => [
-      objectclass => 'posixGroup',
-      cn          => $groupname,
-      gidNumber   => $gid,
-      memberUid   => $args->{members}
-  ]});
+    attrs => [@attrs]
+  });
 }
 
 sub add_user {
@@ -251,12 +261,14 @@ sub add_user {
     return { error => "group '$groupname' does not exist" } unless $r->{result};
   }
 
-  my $password_hash = hash_password($args->{password}) or return { error => "failed to create password hash" };
+  my $password_hash = $args->{password} =~ /^{CRYPT}/
+    ? $args->{password}
+    : hash_password($args->{password}) or return { error => "failed to create password hash" };
 
   $r = add_group({
     groupname => $username,
     gid       => $uid,
-    members   => $username
+    members   => [$username]
   });
   return $r if $r->{error};
 
@@ -277,7 +289,7 @@ sub add_user {
     homeDirectory => $args->{homedir},
     loginShell    => $args->{shell},
     role          => $args->{role},
-    userPassword  => $password_hash,      
+    userPassword  => $password_hash,
   );
   push @attrs, sshPublicKey => $args->{sshkeys} if @{$args->{sshkeys}};
 
@@ -316,7 +328,7 @@ sub modify_user {
   my $args = shift;
   my $username = $args->{username};
   my $dn = "uid=$username,ou=users,$basedn";
-    
+
   my $r = get_user({ username => $username });
   return $r if $r->{error};
   my $user = $r->{result} or return { error => "user '$args->{username}' does not exist" };
@@ -340,7 +352,7 @@ sub modify_user {
       });
       return $r if $r->{error};
     }
-     
+
     for my $groupname (@{$args->{groups}->{replace}}) {
       $r = add_user_to_group({
         username  => $username,
@@ -363,20 +375,32 @@ sub modify_user {
   push @changes, replace => [ loginShell    => $args->{shell}   ] if $args->{shell};
 
   if ($args->{password}) {
-    my $password_hash = hash_password($args->{password}) or return { error => "failed to create password hash" };
+    my $password_hash = $args->{password} =~ /^{CRYPT}/
+      ? $args->{password}
+      : hash_password($args->{password}) or return { error => "failed to create password hash" };
     push @changes, replace => [ userPassword  => $password_hash ];
   }
 
   if ($args->{sshkeys}->{replace}) {
     push @changes, replace => [ sshPublicKey => $args->{sshkey}->{replace} ];
   } else {
-    if ($args->{sshkeys}->{delete} // '' eq 'ALL') {
+    if (($args->{sshkeys}->{delete} // '') eq 'ALL') {
       push @changes, delete => [ sshPublicKey => [] ];
     } else {
-      push @changes, add    => [ sshPublicKey => $args->{sshkeys}->{add}    ] if $args->{sshkeys}->{add};
-      push @changes, delete => [ sshPublicKey => $args->{sshkeys}->{delete} ] if $args->{sshkeys}->{delete};
+      my @keys = flatten([$user->{sshPublicKey} // [] ]);
+      push @keys, @{$args->{sshkeys}->{add}} if $args->{sshkeys}->{add};
+      my %delete;
+      if ($args->{sshkeys}->{delete}) {
+        for my $k (flatten[$args->{sshkeys}->{delete}]) {
+          $delete{$k} = 1;
+         }
+      }
+      @keys = grep { not $delete{$_} } @keys;
+      push @changes, replace => [ sshPublicKey => [@keys] ];
     }
   }
+
+  return unless @changes;
 
   $r = ldap_modify({
     dn      => $dn,
@@ -420,7 +444,7 @@ sub create_homedir {
     }
   }
 
-  return { result => $dir }; 
+  return { result => $dir };
 }
 
 sub delete_group {
@@ -434,6 +458,26 @@ sub delete_group {
   };
 
   return ldap_delete({ dn => $group->{dn} });
+}
+
+sub modify_group {
+  my $args = shift;
+  my $groupname = $args->{groupname};
+  my $dn = "cn=$groupname,ou=groups,$basedn";
+
+  my $r = get_group({ groupname => $groupname });
+  return $r if $r->{error};
+  my $group = $r->{result} or return { error => "group '$groupname' does not exist" };
+
+  my @changes;
+  push @changes, replace => [ description => $args->{description} ] if $args->{description};
+
+  $r = ldap_modify({
+    dn      => $dn,
+    changes => [@changes]
+  });
+
+  return $r->{error} ? $r : { result => 1};
 }
 
 sub get_user_groups {
@@ -466,11 +510,11 @@ sub add_user_to_group {
     ($args->{uid} ? "uid $args->{uid}" : "user '$args->{username}'") . " does not exist"
   };
 
-  return { result => 1 } if grep { $_ eq $user->{uid} } @{$group->{memberUid}};
-  
+  return { result => 1 } if grep { $_ eq $user->{uid} } flatten($group->{memberUid} // []);
+
   return ldap_modify({
     dn      => $group->{dn},
-    changes => [ add => { memberUid => $user->{uid} } ] 
+    changes => [ add => [ memberUid => $user->{uid} ] ]
   });
 }
 
@@ -489,11 +533,12 @@ sub remove_user_from_group {
     ($args->{uid} ? "uid $args->{uid}" : "user '$args->{username}'") . " does not exist"
   };
 
-  return { result => 1 } unless grep { $_ eq $user->{uid} } @{$group->{memberUid}};
-  
+  return { result => 1 } unless grep { $_ eq $user->{uid} } flatten($group->{memberUid});
+  my @members = grep { $_ ne $user->{uid} } flatten($group->{memberUid});
+
   return ldap_modify({
     dn      => $group->{dn},
-    changes => [ delete => { memberUid => $user->{uid} } ] 
+    changes => [ replace => [ memberUid => [@members] ] ]
   });
 }
 
@@ -520,13 +565,13 @@ sub delete_user {
   $r = get_user_groups({ username => $user->{uid} });
   return $r if $r->{error};
   for my $group (@{$r->{result}}) {
-    $r = remove_user_from_group(
+    $r = remove_user_from_group({
       username  => $user->{uid},
       groupname => $group->{cn}
-    );
+    });
     return $r if $r->{error};
   }
- 
+
   $r = ldap_delete({ dn => $user->{dn} });
   return $r if $r->{error};
 
@@ -546,6 +591,7 @@ Options:
   -G, --groups GROUPS      secondary groups for the new account (comma separated)
   -h, --help               display this help message and exit
   -k, --key KEY            ssh public key for the new account (can be used multiple times)
+  -l, --lock               lock the new account upon creation
   -m, --mail EMAIL         email address for the new account
   -P, --prompt-password    read the account's password from stdin
   -p, --password PASSWORD  password for the new account (default: randomly generated)
@@ -554,7 +600,7 @@ Options:
   -u, --uid UID            user ID of the of the new account (default: next available)
 EOF
 
-  my ($username, $fullname, $homedir, $mail, $keyfile, $uid, $password, @sshkeys, @groups);
+  my ($username, $fullname, $homedir, $mail, $keyfile, $uid, $password, $locked, @sshkeys, @groups);
   my $shell = '/sbin/nologin';
   my $role = 'default';
   my $prompt_password = 0;
@@ -567,6 +613,7 @@ EOF
     'G|groups=s'         => \@groups,
     'h|help'             => sub { print $usage; exit },
     'k|key=s'            => \@sshkeys,
+    'l|lock'             => \$locked,
     'm|mail=s'           => \$mail,
     'P|prompt-password'  => \$prompt_password,
     'p|password=s'       => \$password,
@@ -575,16 +622,20 @@ EOF
     'u|uid=i'            => \$uid,
   ) or die $usage;
   $username = shift or die $usage;
+  die $usage if @_;
 
   $mail    //= "$username\@$domain";
   $homedir //= "/home/$username";
 
   fatal 'invalid username' unless $username =~ /^[[:alnum:]_-]+$/;
+  fatal 'invalid uid' if ($uid && $uid <= 0);
   fatal 'no fullname specified' unless $fullname;
   fatal 'invalid fullname, should be "first last"' unless $fullname =~ /^[\w-]+\s+[\w-]+$/;
   fatal 'parent of homedir does not exist' unless -d dirname($homedir);
   fatal 'invalid email address' unless $mail =~ /@/;
   fatal 'shell is not a valid executable' unless -x $shell;
+  fatal '--lock (-l) and --prompt-password (-P) are mutually exclusive' if ($locked && $prompt_password);
+  fatal '--lock (-l) and --password (-p) are mutually exclusive' if ($locked && $password);
   fatal '--password (-p) and --prompt-password (-P) are mutually exclusive' if ($password && $prompt_password);
   fatal '--key (-k) and --keyfile (-f) are mutually exclusive' if (@sshkeys && $keyfile);
   fatal 'keyfile is not readable' if ($keyfile && !(-f $keyfile && -r $keyfile));
@@ -595,6 +646,7 @@ EOF
     fatal "invalid group name '$_'" unless /^[[:alnum:]]+$/;
   }
 
+  $password = '{CRYPT}*' if $locked;
   $password = prompt_password("Enter password for $username") if $prompt_password;
   unless (defined $password) {
     $password = random_password();
@@ -637,6 +689,7 @@ Options:
   -h, --help            display this help message and exit
   -K, --delete-key KEY  ssh key(s) to delete from the account, or "ALL"
   -k, --key KEY         ssh public key to add for the account (can be used multiple times)
+  -l, --lock            lock the account
   -m, --mail EMAIL      email address for the account
   -r, --role ROLE       role for the account (default, admin)
   -s, --shell SHELL     login shell of the account
@@ -647,7 +700,7 @@ Notes:
   to change a username, you must delete and re-add the account.
 EOF
 
-  my ($username, $fullname, $homedir, $mail, $role, $shell, $keyfile, $append, @sshkeys_add, @sshkeys_delete, @groups);
+  my ($username, $fullname, $homedir, $mail, $role, $shell, $keyfile, $append, $locked, @sshkeys_add, @sshkeys_delete, @groups);
   my $groupflag = 0;
 
   GetOptionsFromArray(\@_,
@@ -655,15 +708,17 @@ EOF
     'c|fullname=s'   => \$fullname,
     'd|homedir=s'    => \$homedir,
     'f|keyfile=s'    => \$keyfile,
-    'G|group:s'      => sub { $groupflag = 1; @groups = @_; },
+    'G|group:s'      => sub { shift; $groupflag = 1; @groups = @_; },
     'h|help'         => sub { print $usage; exit },
     'K|delete-key=s' => \@sshkeys_delete,
     'k|key=s'        => \@sshkeys_add,
+    'l|lock'         => \$locked,
     'm|mail=s'       => \$mail,
     'r|role=s'       => \$role,
     's|shell=s'      => \$shell,
   ) or die $usage;
   $username = shift or die $usage;
+  die $usage if @_;
   ($fullname or $homedir or $mail or $role or $shell or $keyfile or @sshkeys_add or @sshkeys_delete or @groups) or die $usage;
 
   fatal 'invalid fullname, should be "first last"' if ($fullname and $fullname !~ /^[\w-]+\s+[\w-]+$/);
@@ -674,6 +729,11 @@ EOF
   fatal '--delete-key (-K) and --keyfile (-f) are mutually exclusive' if (@sshkeys_delete and $keyfile);
   fatal '--delete-key (-K) and --key (-k) are mutually exclusive' if (@sshkeys_delete and @sshkeys_add);
   fatal 'keyfile is not readable' if ($keyfile && !(-f $keyfile && -r $keyfile));
+
+  @groups = split(/,/,join(',',@groups));
+  for (@groups) {
+    fatal "invalid group name '$_'" unless /^[[:alnum:]]+$/;
+  }
 
   if ($keyfile) {
     open my $fh, "<", $keyfile or fatal "failed to open keyfile: $!\n";
@@ -697,6 +757,7 @@ EOF
   $changes->{role}     = $role;
   $changes->{shell}    = $shell;
   $changes->{groups}->{$append ? 'add' : 'replace'} = [@groups] if $groupflag;
+  $changes->{password} = '{CRYPT}*' if $locked;
 
   my $r = modify_user($changes);
   fatal $r->{error} if $r->{error};
@@ -714,8 +775,9 @@ EOF
     'h|help' => sub { print $usage; exit },
   ) or die $usage;
   my $username = shift or die $usage;
+  die $usage if @_;
 
-  my $r = delete_user({ username => $username }); 
+  my $r = delete_user({ username => $username });
   fatal $r->{error} if $r->{error};
 }
 
@@ -727,6 +789,9 @@ Options:
   -h, --help               show this help message and exit
   -P, --prompt-password    read the new password from stdin
   -p, --password PASSWORD  password for the new account (default: randomly generated)
+
+Notes:
+  Resetting an account's password will unlock the account.
 EOF
 
   my $password = undef;
@@ -739,6 +804,7 @@ EOF
     'p|password=s'       => \$password,
   ) or die "$usage\n";
   my $username = shift or die $usage;
+  die $usage if @_;
 
   fatal '--password (-p) and --prompt-password (-P) are mutually exclusive' if ($password && $prompt_password);
 
@@ -754,7 +820,7 @@ EOF
     password => $password
   });
   fatal $r->{error} if $r->{error};
- 
+
   print "new password: $password\n" if $random_password;
 }
 
@@ -771,10 +837,11 @@ EOF
     'h|help' => sub { print $usage; exit },
   ) or die $usage;
   my $username = shift or die $usage;
+  die $usage if @_;
 
   my $r = get_user({ username => $username });
   fatal $r->{error} if $r->{error};
-  my $u = $r->{result} or die "$PROG: user $username does not exist\n";
+  my $u = $r->{result} or die "$PROG: user '$username' does not exist\n";
 
   $r = get_user_groups({ username => $username });
   fatal $r->{error} if $r->{error};
@@ -789,7 +856,7 @@ EOF
   printf "%${w}s: %s\n", 'shell',     $u->{loginShell};
   printf "%${w}s: %s\n", 'mail',      $u->{'mail'};
   printf "%${w}s: %s\n", 'role',      $u->{'role'};
-  printf "%${w}s: %s\n", 'groups',    (join(',', map { $_->cn } @{$r->{result}}) or '[none]');
+  printf "%${w}s: %s\n", 'groups',    (join(',', map { $_->{cn} } @{$r->{result}}) or '[none]');
 
   if ($u->{sshPublicKey}) {
     for my $key (flatten($u->{sshPublicKey})) {
@@ -811,6 +878,7 @@ EOF
   GetOptionsFromArray(\@_,
     'h|help' => sub { print $usage; exit },
   ) or die "$usage\n";
+  die $usage if @_;
 
   my $r = get_users();
   fatal $r->{error} if $r->{error};
@@ -829,8 +897,145 @@ EOF
       $u->{loginShell},
       $u->{mail},
       $u->{role},
-      scalar(@{$u->{sshPublicKey} // []}),
+      scalar(flatten[$u->{sshPublicKey}]),
       join(',', map { $_->{cn} } @{$r->{result}});
+  }
+}
+
+sub groupadd {
+  my $usage = <<EOF;
+Usage: $PROG groupadd [options] GROUP
+
+Options:
+  -c, --description DESC  description of the new group
+  -g, --gid GID           group ID of the of the new gruop
+  -h, --help              display this help message and exit
+EOF
+
+  my ($description, $gid);
+
+  GetOptionsFromArray(\@_,
+    'c|description=s'  => \$description,
+    'g|gid=i'          => \$gid,
+    'h|help'             => sub { print $usage; exit },
+  ) or die $usage;
+  my $groupname = shift or die $usage;
+  die $usage if @_;
+
+  fatal 'invalid group' unless $groupname =~ /^[[:alnum:]_-]+$/;
+  fatal 'invalid gid' if ($gid && $gid <= 0);
+
+  my $r = add_group({
+    groupname   => $groupname,
+    gid         => $gid,
+    description => $description
+  });
+
+  fatal $r->{error} if $r->{error};
+}
+
+sub groupdel {
+  my $usage =  <<EOF;
+Usage: $PROG groupdel [options] GROUP
+
+Options:
+  -h, --help  show this help message and exit
+EOF
+
+  GetOptionsFromArray(\@_,
+    'h|help' => sub { print $usage; exit },
+  ) or die $usage;
+  my $groupname = shift or die $usage;
+  die $usage if @_;
+
+  my $r = delete_group({ groupname => $groupname });
+  fatal $r->{error} if $r->{error};
+}
+
+sub groupmod {
+  my $usage = <<EOF;
+Usage: $PROG groupmod [options] GROUP
+
+Options:
+  -c, --description DESC  description of the group
+  -h, --help              show this help message and exit
+
+Notes:
+  ldapd(8) does not currently support the modrdn operation. Therefore, group names
+  cannot be changed, since the DNs would have to change as a result. If you need
+  to change a group name, you must delete and re-add the group.
+EOF
+
+  my $description;
+
+  GetOptionsFromArray(\@_,
+    'c|description=s'  => \$description,
+    'h|help'           => sub { print $usage; exit }
+  ) or die $usage;
+  my $groupname = shift or die $usage;
+  die $usage if @_;
+
+  my $changes = { groupname => $groupname };
+  $changes->{description} = $description;
+
+  my $r = modify_group($changes);
+  fatal $r->{error} if $r->{error};
+}
+
+sub grouplist {
+  my $usage =  <<EOF;
+Usage: $PROG grouplist [options]
+
+Options:
+  -h, --help  show this help message and exit
+EOF
+
+  GetOptionsFromArray(\@_,
+    'h|help' => sub { print $usage; exit },
+  ) or die "$usage\n";
+  die $usage if @_;
+
+  my $r = get_groups();
+  fatal $r->{error} if $r->{error};
+
+  for my $g (sort { $a->{cn} cmp $b->{cn} } @{$r->{result}}) {
+    printf "%s:%d:%s:%s\n",
+      $g->{cn},
+      $g->{gidNumber},
+      $g->{description} // '',
+      join(',', flatten($r->{memberUid} // []));
+  }
+}
+
+sub groupinfo {
+  my $usage =  <<EOF;
+Usage: $PROG groupinfo [options] GROUP
+
+Options:
+  -h, --help  show this help message and exit
+EOF
+
+  GetOptionsFromArray(\@_,
+    'h|help' => sub { print $usage; exit },
+  ) or die $usage;
+  my $groupname = shift or die $usage;
+  die $usage if @_;
+
+  my $r = get_group({ groupname => $groupname });
+  fatal $r->{error} if $r->{error};
+  my $g = $r->{result} or die "$PROG: group '$groupname' does not exist\n";
+
+  my $w = 11;
+  printf "%${w}s: %s\n", 'group',       $g->{cn};
+  printf "%${w}s: %d\n", 'gid',         $g->{gidNumber};
+  printf "%${w}s: %d\n", 'description', $g->{gidNumber};
+
+  if ($g->{memberUid}) {
+    for my $u (flatten($g->{memberUid})) {
+      printf "%${w}s: %s\n", 'member', $u;
+    }
+  } else {
+    printf "%${w}s: %s\n", 'member', '[none]';
   }
 }
 
@@ -838,23 +1043,38 @@ my $usage = <<EOF;
 Usage: $PROG COMMAND [options]
 
 Commands:
-  help       display this help
-  resetpass  reset an account password
-  useradd    add a new user
-  userdel    delete a user account
-  userinfo   show a user account
-  usermod    modify a user account
-  userlist   list all users
+  Help:
+    help       display this help
+
+  Users:
+    useradd    add a new user
+    userdel    delete a user account
+    usermod    modify a user account
+    userinfo   show a user account
+    userlist   list all user accounts
+    resetpass  reset an account password
+
+  Groups:
+    groupadd   add a new group
+    groupdel   delete a group
+    groupmod   modify a group
+    groupinfo  show a group
+    grouplist  list all groups
 EOF
 
 my %cmds = (
-  resetpass => \&resetpass,
+  help      => sub {print $usage; exit },
   useradd   => \&useradd,
   userdel   => \&userdel,
-  userinfo  => \&userinfo,
   usermod   => \&usermod,
+  userinfo  => \&userinfo,
   userlist  => \&userlist,
-  help      => sub {print $usage; exit }
+  resetpass => \&resetpass,
+  groupadd  => \&groupadd,
+  groupdel  => \&groupdel,
+  groupmod  => \&groupmod,
+  groupinfo => \&groupinfo,
+  grouplist => \&grouplist,
 );
 
 my $cmd = shift or die $usage;
