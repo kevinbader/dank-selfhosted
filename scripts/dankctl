@@ -15,10 +15,6 @@
 #
 #   -cullum
 
-# TODO: getpw*/getpr* calls have caching involved, we shouldn't use them for
-#       validity checks. Should query ldap directly instead.
-# TODO: refactor duplicated ldap logic into functions
-
 use strict;
 use warnings;
 
@@ -26,6 +22,7 @@ use Getopt::Long qw(GetOptionsFromArray :config no_ignore_case);
 use File::Basename;
 use Net::Domain qw(hostdomain);
 use IPC::Open2;
+use List::Util qw(min max);
 use Net::LDAP;
 
 my $PROG = basename $0;
@@ -35,9 +32,14 @@ my $basedn = join(',', map { "dc=$_" } split(/\./, $domain));
 my $binddn = $ENV{LDAP_BINDDN} // sprintf("uid=%s,ou=users,%s", getlogin(), $basedn);
 my $bound = 0;
 
+my $min_uid = 10000;
+my $max_uid = 19999;
+my $min_gid = 20000;
+my $max_gid = 29999;
 
-sub error {
-  die "$PROG: $_[0]\n";
+sub fatal {
+  my $err = shift;
+  die "$PROG: $err\n";
 }
 
 sub prompt_password {
@@ -57,117 +59,200 @@ sub bindpw {
 }
 
 sub ldap_bind {
-  return if $bound == 1;
+  return { result => $binddn } if $bound == 1;
   my $r = $ldap->bind($binddn, password => bindpw());
-  error 'LDAP bind falied: ' . $r->error if $r->is_error;
+  return { error => $r->error } if $r->is_error;
   $bound = 1;
-}
-
-sub next_uid {
-  my $max = 9999;
-  while (my @p = getpwent()) {
-    $max = $p[3] if $p[3] > $max && $p[3] >= 10000 && $p[3] < 20000 && $p[3];
-  }
-  return $max + 1;
+  return { result => $binddn };
 }
 
 sub random_password {
+  my $length = shift // 32;
   my @alnum = ('a'..'z', 'A'..'Z', 0..9);
-  return join '', map $alnum[rand @alnum], 0..32;
+  return join '', map $alnum[rand @alnum], 0..$length;
 }
 
 sub hash_password {
+  my $password = shift;
   open2(my $out, my $in, '/usr/bin/encrypt', '-b', 'a');
-  print $in "$_[0]\n";
+  print $in "$password\n";
   close $in;
-  chomp(my $crypt = <$out>);
-  return "{CRYPT}$crypt";
+  chomp(my $hash = <$out>);
+  return $hash ? "{CRYPT}$hash" : undef;
 }
 
-sub useradd {
-  my $usage =  <<EOF;
-Usage: $PROG useradd [options] USERNAME
+sub ldap_search {
+  my $args = shift;
 
-Options:
-  -a, --admin              give the user admin/superuser privileges
-  -c, --fullname NAME      first and last name for the new account (required)
-  -d, --homedir DIR        home directory of the new account (default: /home/username)
-  -h, --help               display this help message and exit
-  -K, --keyfile            file containing SSH public keys for the new account
-  -k, --key KEY            ssh public key for the new account (can be used multiple times)
-  -m, --mail EMAIL         email address for the new account
-  -P, --prompt-password    read the account's password from stdin
-  -p, --password PASSWORD  password for the new account (default: randomly generated)
-  -s, --shell SHELL        login shell of the new account (default: /sbin/nologin)
-  -u, --uid UID            user ID of the of the new account (default: next available)
-EOF
-
-  my ($username, $fullname, $homedir, $mail, $keyfile, @sshkeys);
-  my $shell = '/sbin/nologin';
-  my $uid = next_uid();
-  my $password = undef;
-  my $admin = 0;
-  my $prompt_password = 0;
-  my $random_password = 0;
-
-  GetOptionsFromArray(\@_,
-    'a|admin'            => \$admin,
-    'c|fullname=s'       => \$fullname,
-    'd|homedir=s'        => \$homedir,
-    'f|keyfile=s'        => \$keyfile,
-    'h|help'             => sub { print $usage; exit },
-    'k|key=s'            => \@sshkeys,
-    'm|mail=s'           => \$mail,
-    'P|prompt-password'  => \$prompt_password,
-    'p|password=s'       => \$password,
-    's|shell=s'          => \$shell,
-    'u|uid=i'            => \$uid,
-  ) or die $usage;
-  $username = shift or die $usage;
-
-  $mail    //= "$username\@$domain";
-  $homedir //= "/home/$username";
-  my $role = $admin ? 'admin' : 'default';
-
-  error 'invalid username' unless $username =~ /^[[:alnum:]]+$/;
-  error 'username already exists' if getpwnam($username);
-  error 'groupname already exists' if getgrnam($username);
-  error 'no fullname specified' unless $fullname;
-  error 'invalid fullname, should be "first last"' unless $fullname =~ /^[\w-]+\s+[\w-]+$/;
-  error 'parent of homedir does not exist' unless -d dirname($homedir);
-  error 'invalid email address' unless $mail =~ /@/;
-  error 'shell is not a valid executable' unless -x $shell;
-  error 'invalid uid' if $uid == 0;
-  error 'uid already exists' if getpwuid($uid);
-  error 'gid already exists' if getgrgid($uid);
-  error '--password (-p) and --prompt-password (-P) are mutually exclusive' if ($password && $prompt_password);
-  error '--key (-k) and --keyfile (-f) are mutually exclusive' if (@sshkeys && $keyfile);
-  error 'keyfile is not readable' if ($keyfile && !(-f $keyfile && -r $keyfile));
-
-  $password = prompt_password("Enter password for $username") if $prompt_password;
-  unless (defined $password) {
-    $password = random_password();
-    $random_password = 1;
-  }
-  error 'you must specify a password' if $password =~ /^\s*$/;
-
-  if ($keyfile) {
-    open my $fh, "<", $keyfile or error "failed to open keyfile: $!\n";
-    chomp (@sshkeys = <$fh>);
-  }
-
-  ldap_bind();
-
-  my $r = $ldap->add(
-    "cn=$username,ou=groups,$basedn",
-    attrs => [
-      objectclass => [qw( posixGroup )],
-      cn => $username,
-      gidNumber => $uid,
-      memberUid => $username,
-    ]
+  my $r = $ldap->search(
+    base   => $args->{base},
+    scope  => $args->{scope} // 'children',
+    filter => $args->{filter},
+    attrs  => $args->{attrs}
   );
-  error "groupadd failed: " . $r->error if $r->is_error;
+  return { error => $r->error } if $r->is_error;
+
+  my @entries = map {
+    my $e = { dn => $_->dn };
+    for my $attr ($_->attributes) {
+      my @vals = $_->get_value($attr);
+      next unless @vals;
+      $e->{$attr} = scalar(@vals) == 1 ? $vals[0] : [@vals];
+    }
+    $e;
+  } $r->entries;
+  return { result => [@entries] };
+}
+
+sub ldap_add {
+  my $args = shift;
+  my $r = ldap_bind();
+  return $r if $r->{error};
+
+  $r = $ldap->add($args->{dn}, attrs => $args->{attrs});
+  return { error => $r->error } if $r->is_error;
+  return { result => $args->{dn} };
+}
+
+sub ldap_delete {
+  my $args = shift;
+  my $r = ldap_bind();
+  return $r if $r->{error};
+
+  $r = $ldap->delete($args->{dn});
+  return { error => $r->error } if $r->is_error;
+  return { result => 1 };
+}
+
+sub ldap_modify {
+  my $args = shift;
+  my $r = ldap_bind();
+  return { error => $r->{error} } if $r->{error};
+
+  $r = $ldap->modify($args->{dn}, changes => @{$args->{changes}});
+  return { error => $r->error } if $r->is_error;
+  return { result => 1 };
+}
+
+sub get_user {
+  my $args = shift;
+
+  my $r = ldap_search({
+    base   => "ou=users,$basedn",
+    filter => "(&"
+      . ($args->{uid} ? "(uidNumber=$args->{uid})" : "(uid=$args->{username})")
+      . "(objectClass=posixAccount))"
+  });
+
+  return $r if $r->{error};
+  return { result => undef } if @{$r->{result}} == 0;
+  return { result => $r->{result}[0] };
+}
+
+sub get_users {
+  return ldap_search({
+    base   => "ou=users,$basedn",
+    filter => "(objectClass=posixAccount)"
+  });
+}
+
+sub get_group {
+  my $args = shift;
+
+  my $r = ldap_search({
+    base   => "ou=groups,$basedn",
+    filter => "(&"
+      . ($args->{gid} ? "(gidNumber=$args->{gid})" : "(cn=$args->{groupname})")
+      . "(objectClass=posixGroup))"
+  });
+
+  return $r if $r->{error};
+  return { result => undef } if @{$r->{result}} == 0;
+  return { result => $r->{result}[0] };
+}
+
+sub get_groups {
+  return ldap_search({
+    base   => "ou=groups,$basedn",
+    filter => "(&(objectClass=posixGroup))"
+  });
+}
+
+sub next_id {
+  my $args = shift;
+  my $type = $args->{type} or die "next_id needs type argument";
+  die "type must be uid or gid" unless $type =~ /^(uid|gid)$/;
+
+  my $min  = $args->{min} // ($type eq 'uid' ? $min_uid : $min_gid);
+  my $max  = $args->{max} // ($type eq 'uid' ? $max_uid : $max_gid);
+  my $base        = $type eq 'uid' ? "ou=users,$basedn" : "ou=groups,$basedn";
+  my $objectclass = $type eq 'uid' ? 'posixAccount'     : 'posixGroup';
+  my $attr        = $type eq 'uid' ? 'uidNumber'        : 'gidNumber';
+
+  my $r = ldap_search({
+    base   => $base,
+    filter => "(objectClass=$objectclass)",
+    attrs  => [$attr]
+  });
+  return $r if $r->{error};
+
+  my @ids = map { $_->{$attr} } @{$r->{result}};
+  return { result => $min } if !@ids;
+
+  @ids = grep { $_ >= $min && $_ <= $max } @ids;
+  return @ids
+    ? { result => max(@ids) + 1 }
+    : { error => "no available IDs in range $min..$max" };
+}
+
+sub add_group {
+  my $args = shift;
+  my $groupname = $args->{groupname};
+  my $dn = "cn=$groupname,ou=groups,$basedn";
+  my $r = next_id({type => 'gid'});
+  my $gid = $args->{gid} // ($r->{error}
+    ? return $r
+    : $r->{result});
+
+  return { error => "gid $gid already exists" } if get_group({gid => $gid})->{result};
+  return { error => "group $groupname already exists" } if get_group({groupname => $groupname})->{result};
+
+  return ldap_add({
+    dn => $dn,
+    attrs => [
+      objectclass => 'posixGroup',
+      cn          => $groupname,
+      gidNumber   => $gid,
+      memberUid   => $args->{members}
+  ]});
+}
+
+sub add_user {
+  my $args = shift;
+  my $username = $args->{username};
+  my $dn = "uid=$username,ou=users,$basedn";
+  my $r = next_id({type => 'uid'});
+  my $uid = $args->{uid} // ($r->{error}
+    ? return $r
+    : $r->{result});
+
+  return { error => "uid $uid already exists" } if get_user({uid => $uid})->{result};
+  return { error => "user $username already exists" } if get_user({username => $username})->{result};
+
+  for my $groupname (@{$args->{groups}}) {
+    $r = get_group({ groupname => $groupname });
+    return $r if $r->{error};
+    return { error => "group $groupname does not exist" } unless $r->{result};
+  }
+
+  my $password_hash = hash_password($args->{password}) or return { error => "failed to create password hash" };
+
+  $r = add_group({
+    groupname => $username,
+    gid       => $uid,
+    members   => $username
+  });
+  return $r if $r->{error};
 
   my @attrs = (
     objectClass => [qw(
@@ -176,54 +261,432 @@ EOF
       ldapPublicKey
       dankAccount
     )],
-    uid => $username,
-    cn => $fullname,
-    givenName => (split ' ', $fullname)[0],
-    sn => (split ' ', $fullname)[1],
-    mail => $mail,
-    uidNumber => $uid,
-    gidNumber => $uid,
-    homeDirectory => $homedir,
-    loginShell => $shell,
-    userPassword => hash_password($password),
-    role => $role,
+    uid           => $username,
+    cn            => $args->{fullname},
+    givenName     => (split ' ', $args->{fullname})[0],
+    sn            => (split ' ', $args->{fullname})[-1],
+    mail          => $args->{mail},
+    uidNumber     => $uid,
+    gidNumber     => $uid,
+    homeDirectory => $args->{homedir},
+    loginShell    => $args->{shell},
+    role          => $args->{role},
+    userPassword  => $password_hash,      
   );
-  push @attrs, sshPublicKey => [@sshkeys] if @sshkeys;
+  push @attrs, sshPublicKey => $args->{sshkeys} if @{$args->{sshkeys}};
 
-  $r = $ldap->add(
-    "uid=$username,ou=users,$basedn",
+  $r = ldap_add({
+    dn    => $dn,
     attrs => [@attrs]
-  );
-  if ($r->is_error) {
-    $ldap->delete("cn=$username,ou=groups,$basedn");
-    error 'useradd failed: ' . $r->error if $r->is_error;
+  });
+
+  if ($r->{error}) {
+    delete_group({ groupname => $username });
+    return $r;
   }
 
-  if (-d $homedir) {
-    print "warning: $homedir already exists\n";
+  for my $groupname (@{$args->{groups}}) {
+    $r = add_user_to_group({
+      username  => $username,
+      groupname => $groupname
+    });
+
+    if ($r->{error}) {
+      delete_user({ username => $username });
+      return $r;
+    }
+  }
+
+  $r = create_homedir({ uid => $uid, dir => $args->{homedir} });
+  if ($r->{error}) {
+    delete_user({ username => $username });
+    return $r;
+  }
+
+  return { result => $dn };
+}
+
+sub modify_user {
+  my $args = shift;
+  my $username = $args->{username};
+  my $dn = "uid=$username,ou=users,$basedn";
+    
+  my $r = get_user({ username => $username });
+  return $r if $r->{error};
+  my $user = $r->{result} or return { error => "user $args->{username} does not exist" };
+
+  if ($args->{groups}->{add}) {
+    for my $groupname (@{$args->{groups}->{add}}) {
+      $r = add_user_to_group({
+        username  => $username,
+        groupname => $groupname
+      });
+      return $r if $r->{error};
+    }
+  } elsif ($args->{groups}->{replace}) {
+    $r = get_user_groups({ username => $username });
+    return $r if $r->{error};
+
+    for my $group (@{$r->{result}}) {
+      $r = remove_user_from_group({
+        username  => $username,
+        groupname => $group->{cn}
+      });
+      return $r if $r->{error};
+    }
+     
+    for my $groupname (@{$args->{groups}->{replace}}) {
+      $r = add_user_to_group({
+        username  => $username,
+        groupname => $groupname
+      });
+      return $r if $r->{error};
+    }
+  }
+
+  my @changes;
+  push @changes, replace => [
+    cn        => $args->{fullname},
+    givenName => (split ' ', $args->{fullname})[0],
+    sn        => (split ' ', $args->{fullname})[-1]
+  ] if $args->{fullname};
+
+  push @changes, replace => [ homeDirectory => $args->{homedir} ] if $args->{homedir};
+  push @changes, replace => [ mail          => $args->{mail}    ] if $args->{mail};
+  push @changes, replace => [ role          => $args->{role}    ] if $args->{role};
+  push @changes, replace => [ loginShell    => $args->{shell}   ] if $args->{shell};
+
+  if ($args->{sshkeys}->{replace}) {
+    push @changes, replace => [ sshPublicKey => $args->{sshkey}->{replace} ];
+  } else {
+    if ($args->{sshkeys}->{delete} eq 'ALL') {
+      push @changes, delete => [ sshPublicKey => [] ];
+    } else {
+      push @changes, add    => [ sshPublicKey => $args->{sshkeys}->{add}    ] if $args->{sshkeys}->{add};
+      push @changes, delete => [ sshPublicKey => $args->{sshkeys}->{delete} ] if $args->{sshkeys}->{delete};
+    }
+  }
+
+  $r = ldap_modify({
+    dn      => $dn,
+    changes => [@changes]
+  });
+  return $r if $r->{error};
+
+  print "warning: home directory for $username was changed, but the filesystem was not modifed.\n",
+        "manual intervention may be required: $user->{homeDirectory} -> $args->{homedir}\n"
+    if $args->{homedir};
+}
+
+sub create_homedir {
+  my $args = shift;
+  my $dir = $args->{dir};
+  my $uid = $args->{uid};
+
+  if (-d $dir) {
+    print "warning: $dir already exists\n";
   } else {
     my $ok = 0;
     if ($< == 0) {
-      $ok || ($ok |= mkdir $homedir, 0700);
-      $ok || ($ok |= chown $uid, $uid, $homedir);
+      $ok || ($ok |= mkdir $dir, 0700);
+      $ok || ($ok |= chown $uid, $uid, $dir);
     } else {
       print "invoking doas to create home directory\n";
       my %ENV_COPY = %ENV;
       %ENV = ();
-      $ok || ($ok |= system('/usr/bin/doas', '/bin/mkdir', $homedir));
-      $ok || ($ok |= system('/usr/bin/doas', '/bin/chmod', '700', $homedir));
-      $ok || ($ok |= system('/usr/bin/doas', '/usr/sbin/chown', "$uid:$uid", $homedir));
+      $ok || ($ok |= system('/usr/bin/doas', '/bin/mkdir', $dir));
+      $ok || ($ok |= system('/usr/bin/doas', '/bin/chmod', '700', $dir));
+      $ok || ($ok |= system('/usr/bin/doas', '/usr/sbin/chown', "$uid:$uid", $dir));
       %ENV = %ENV_COPY;
     }
 
     if ($ok != 0) {
-      print "rolling back...\n";
-      userdel($username);
-      error 'useradd failed: could not create home directory';
+      my $error = "could not create $dir: $!";
+      rmdir($dir);
+      return { error => $error };
     }
   }
 
+  return { result => $dir }; 
+}
+
+sub delete_group {
+  my $args = shift;
+
+  my $r = get_group($args);
+  return $r if $r->{error};
+
+  my $group = $r->{result} or return { error =>
+    ($args->{gid} ? "gid $args->{gid}" : "group $args->{groupname}") . " does not exist"
+  };
+
+  return ldap_delete({ dn => $group->{dn} });
+}
+
+sub get_user_groups {
+  my $args = shift;
+
+  my $r = get_user($args);
+  return $r if $r->{error};
+  my $user = $r->{result} or return { error =>
+    ($args->{uid} ? "uid $args->{uid}" : "username $args->{username}") . " does not exist"
+  };
+
+  return ldap_search({
+    base   => "ou=groups,$basedn",
+    filter => "(&(objectClass=posixGroup)(memberUid=$user->{uid})(!(cn=$user->{uid})))"
+  });
+}
+
+sub add_user_to_group {
+  my $args = shift;
+
+  my $r = get_group($args);
+  return $r if $r->{error};
+  my $group = $r->{result} or return { error =>
+    ($args->{gid} ? "gid $args->{gid}" : "group $args->{groupname}") . " does not exist"
+  };
+
+  $r = get_user($args);
+  return $r if $r->{error};
+  my $user = $r->{result} or return { error =>
+    ($args->{uid} ? "uid $args->{uid}" : "username $args->{username}") . " does not exist"
+  };
+
+  return { result => 1 } if grep { $_ eq $user->{uid} } @{$group->{memberUid}};
+  
+  return ldap_modify({
+    dn      => $group->{dn},
+    changes => [ add => { memberUid => $user->{uid} } ] 
+  });
+}
+
+sub remove_user_from_group {
+  my $args = shift;
+
+  my $r = get_group($args);
+  return $r if $r->{error};
+  my $group = $r->{result} or return { error =>
+    ($args->{gid} ? "gid $args->{gid}" : "group $args->{groupname}") . " does not exist"
+  };
+
+  $r = get_user($args);
+  return $r if $r->{error};
+  my $user = $r->{result} or return { error =>
+    ($args->{uid} ? "uid $args->{uid}" : "username $args->{username}") . " does not exist"
+  };
+
+  return { result => 1 } unless grep { $_ eq $user->{uid} } @{$group->{memberUid}};
+  
+  return ldap_modify({
+    dn      => $group->{dn},
+    changes => [ delete => { memberUid => $user->{uid} } ] 
+  });
+}
+
+sub delete_user {
+  my $args = shift;
+  my $user;
+
+  my $r = get_user($args);
+  return $r if $r->{error};
+  $user = $r->{result} or return { error =>
+    ($args->{uid} ? "uid $args->{uid}" : "user $args->{username}") . " does not exist"
+  };
+
+  $r = get_group({ groupname => $user->{uid} });
+  return $r if $r->{error};
+  my $group = $r->{result};
+  if ($group) {
+    $r = delete_group({ groupname => $group->{cn} });
+    return $r if $r->{error};
+  } else {
+    print "warning: user $user->{uid} does not have a corresponding group\n";
+  }
+
+  $r = get_user_groups({ username => $user->{uid} });
+  return $r if $r->{error};
+  for my $group (@{$r->{result}}) {
+    $r = remove_user_from_group(
+      username  => $user->{uid},
+      groupname => $group->{cn}
+    );
+    return $r if $r->{error};
+  }
+ 
+  $r = ldap_delete({ dn => $user->{dn} });
+  return $r if $r->{error};
+
+  print "home directory left unmodified: $user->{homeDirectory}\n" if -d $user->{homeDirectory};
+  return { result => 1 };
+}
+
+
+sub useradd {
+  my $usage = <<EOF;
+Usage: $PROG useradd [options] USERNAME
+
+Options:
+  -c, --fullname NAME      first and last name for the new account (required)
+  -d, --homedir DIR        home directory of the new account (default: /home/username)
+  -G, --groups GROUPS      secondary groups for the new account (comma separated)
+  -h, --help               display this help message and exit
+  -K, --keyfile            file containing SSH public keys for the new account
+  -k, --key KEY            ssh public key for the new account (can be used multiple times)
+  -m, --mail EMAIL         email address for the new account
+  -P, --prompt-password    read the account's password from stdin
+  -p, --password PASSWORD  password for the new account (default: randomly generated)
+  -s, --role ROLE          role of the new account (default: default)
+  -s, --shell SHELL        login shell of the new account (default: /sbin/nologin)
+  -u, --uid UID            user ID of the of the new account (default: next available)
+EOF
+
+  my ($username, $fullname, $homedir, $mail, $keyfile, $uid, $password, @sshkeys, @groups);
+  my $shell = '/sbin/nologin';
+  my $role = 'default';
+  my $prompt_password = 0;
+  my $random_password = 0;
+
+  GetOptionsFromArray(\@_,
+    'c|fullname=s'       => \$fullname,
+    'd|homedir=s'        => \$homedir,
+    'f|keyfile=s'        => \$keyfile,
+    'G|groups=s'         => \@groups,
+    'h|help'             => sub { print $usage; exit },
+    'k|key=s'            => \@sshkeys,
+    'm|mail=s'           => \$mail,
+    'P|prompt-password'  => \$prompt_password,
+    'p|password=s'       => \$password,
+    'r|role=s'           => \$role,
+    's|shell=s'          => \$shell,
+    'u|uid=i'            => \$uid,
+  ) or die $usage;
+  $username = shift or die $usage;
+
+  $mail    //= "$username\@$domain";
+  $homedir //= "/home/$username";
+
+  fatal 'invalid username' unless $username =~ /^[[:alnum:]_-]+$/;
+  fatal 'no fullname specified' unless $fullname;
+  fatal 'invalid fullname, should be "first last"' unless $fullname =~ /^[\w-]+\s+[\w-]+$/;
+  fatal 'parent of homedir does not exist' unless -d dirname($homedir);
+  fatal 'invalid email address' unless $mail =~ /@/;
+  fatal 'shell is not a valid executable' unless -x $shell;
+  fatal '--password (-p) and --prompt-password (-P) are mutually exclusive' if ($password && $prompt_password);
+  fatal '--key (-k) and --keyfile (-f) are mutually exclusive' if (@sshkeys && $keyfile);
+  fatal 'keyfile is not readable' if ($keyfile && !(-f $keyfile && -r $keyfile));
+  fatal 'invalid role' unless $username =~ /^[[:alnum:]_-]+$/;
+
+  @groups = split(/,/,join(',',@groups));
+  for (@groups) {
+    fatal "invalid group name '$_'" unless /^[[:alnum:]]+$/;
+  }
+
+  $password = prompt_password("Enter password for $username") if $prompt_password;
+  unless (defined $password) {
+    $password = random_password();
+    $random_password = 1;
+  }
+  fatal 'you must specify a password' if $password =~ /^\s*$/;
+
+  if ($keyfile) {
+    open my $fh, "<", $keyfile or fatal "failed to open keyfile: $!\n";
+    chomp (@sshkeys = <$fh>);
+  }
+
+  my $r = add_user({
+    username => $username,
+    uid      => $uid,
+    fullname => $fullname,
+    mail     => $mail,
+    homedir  => $homedir,
+    shell    => $shell,
+    role     => $role,
+    password => $password,
+    sshkeys  => [@sshkeys],
+    groups   => [@groups],
+  });
+  fatal $r->{error} if $r->{error};
+
   print "password: $password\n" if $random_password;
+}
+
+sub usermod {
+  my $usage = <<EOF;
+Usage: $PROG usermod [options] USERNAME
+
+Options:
+  -a, --append          add to, rather than replace, the account's secondary groups (use with -G)
+  -c, --fullname NAME   first and last name for the account
+  -d, --homedir DIR     home directory of the account
+  -f, --keyfile         file containing SSH public keys to add for the account
+  -G, --groups GROUPS   secondary groups for the account (comma separated, see -a option)
+  -h, --help            display this help message and exit
+  -K, --delete-key KEY  ssh key(s) to delete from the account, or "ALL"
+  -k, --key KEY         ssh public key to add for the account (can be used multiple times)
+  -m, --mail EMAIL      email address for the account
+  -r, --role ROLE       role for the account (default, admin)
+  -s, --shell SHELL     login shell of the account
+
+Notes:
+  ldapd(8) does not currently support the modrdn operation. Therefore, usernames
+  cannot be changed, since the DN's would have to change as a result. If you need
+  to change a username, you must delete and re-add the account.
+EOF
+
+  my ($username, $fullname, $homedir, $mail, $role, $shell, $keyfile, $append, @sshkeys_add, @sshkeys_delete);
+  my @groups;
+  my $groupflag = 0;
+
+  GetOptionsFromArray(\@_,
+    'a|append'       => \$append,
+    'c|fullname=s'   => \$fullname,
+    'd|homedir=s'    => \$homedir,
+    'f|keyfile=s'    => \$keyfile,
+    'G|group:s'      => sub { $groupflag = 1; @groups = @_; },
+    'h|help'         => sub { print $usage; exit },
+    'K|delete-key=s' => \@sshkeys_delete,
+    'k|key=s'        => \@sshkeys_add,
+    'm|mail=s'       => \$mail,
+    'r|role=s'       => \$role,
+    's|shell=s'      => \$shell,
+  ) or die $usage;
+  $username = shift or die $usage;
+
+  fatal 'invalid fullname, should be "first last"' if ($fullname and $fullname !~ /^[\w-]+\s+[\w-]+$/);
+  fatal 'parent of homedir does not exist' if ($homedir and ! -d dirname($homedir));
+  fatal 'invalid email address' if ($mail and $mail !~ /@/);
+  fatal 'shell is not a valid executable' if ($shell and -x $shell);
+  fatal '--key (-k) and --keyfile (-f) are mutually exclusive' if (@sshkeys_add and $keyfile);
+  fatal '--delete-key (-K) and --keyfile (-f) are mutually exclusive' if (@sshkeys_delete and $keyfile);
+  fatal '--delete-key (-K) and --key (-k) are mutually exclusive' if (@sshkeys_delete and @sshkeys_add);
+  fatal 'keyfile is not readable' if ($keyfile && !(-f $keyfile && -r $keyfile));
+
+  if ($keyfile) {
+    open my $fh, "<", $keyfile or fatal "failed to open keyfile: $!\n";
+    chomp (@sshkeys_add = <$fh>);
+  }
+
+  my $changes = { username => $username };
+  if (@sshkeys_add) {
+    $changes->{sshkeys}->{add} = [@sshkeys_add];
+  } elsif (@sshkeys_delete) {
+    if (grep { $_ eq 'ALL' } @sshkeys_delete) {
+      $changes->{sshkeys}->{delete} = 'ALL';
+    } else {
+      $changes->{sshkeys}->{delete} = [@sshkeys_delete];
+    }
+  }
+
+  $changes->{fullname} = $fullname;
+  $changes->{homedir}  = $homedir;
+  $changes->{mail}     = $mail;
+  $changes->{role}     = $role;
+  $changes->{shell}    = $shell;
+  $changes->{groups}->{$append ? 'add' : 'replace'} = [@groups] if $groupflag;
+
+  my $r = modify_user($changes);
+  fatal $r->{error} if $r->{error};
 }
 
 sub userdel {
@@ -239,222 +702,8 @@ EOF
   ) or die $usage;
   my $username = shift or die $usage;
 
-  error 'user does not exist' unless getpwnam($username);
-
-  my $r = $ldap->search(
-    base   => "uid=$username,ou=users,$basedn",
-    scope  => 'base',
-    filter => '(&(objectClass=posixAccount)(objectClass=dankAccount))',
-  );
-  error 'userdel failed: ' . $r->error if $r->is_error;
-
-  my $homedir = ($r->entries)[0]->get_value('homeDirectory');
-
-  ldap_bind();
-
-  $r = $ldap->delete("cn=$username,ou=groups,$basedn");
-  printf "$PROG: groupdel failed: %s\n", $r->error if $r->is_error;
-
-  $r = $ldap->delete("uid=$username,ou=users,$basedn");
-  error 'userdel failed: ' . $r->error if $r->is_error;
-
-  print "home directory left unmodified: $homedir\n" if -d $homedir;
-}
-
-sub userinfo {
-  my $usage =  <<EOF;
-Usage: $PROG userinfo [options] USERNAME
-
-Options:
-  -h, --help  show this help message and exit
-EOF
-
-  GetOptionsFromArray(\@_,
-    'h|help' => sub { print $usage; exit },
-  ) or die $usage;
-  my $username = shift or die $usage;
-
-  error 'user does not exist' unless getpwnam($username);
-
-  my $r = $ldap->search(
-    base   => "uid=$username,ou=users,$basedn",
-    scope  => 'base',
-    filter => '(&(objectClass=posixAccount)(objectClass=dankAccount))',
-  );
-  error 'userinfo failed: ' . $r->error if $r->is_error;
-
-  my $u = ($r->entries)[0] or die "userinfo failed: no results returned";
-  my $w = 8;
-
-  printf "%${w}s : %s\n", 'username', $u->get_value('uid');
-  printf "%${w}s : %s\n", 'realname', $u->get_value('cn');
-  printf "%${w}s : %s\n", 'mail',     $u->get_value('mail');
-  printf "%${w}s : %s\n", 'locked',   $u->get_value('userPassword') eq '{CRYPT}*' ? 'yes' : 'no';
-  printf "%${w}s : %s\n", 'role',     $u->get_value('role');
-  printf "%${w}s : %s\n", 'uid',      $u->get_value('uidNumber');
-  printf "%${w}s : %s\n", 'gid',      $u->get_value('gidNumber');
-  printf "%${w}s : %s\n", 'homedir',  $u->get_value('homeDirectory');
-  printf "%${w}s : %s\n", 'shell',    $u->get_value('loginShell');
-  for my $key ($u->get_value('sshPublicKey')) {
-    printf "%${w}s : %s\n", 'sshkey', $key;
-  }
-}
-
-sub usermod {
-  my $usage =  <<EOF;
-Usage: $PROG usermod [options] USERNAME
-
-Options:
-  -A, --delete-keys     delete all ssh keys for the account
-  -c, --fullname NAME   first and last name for the account
-  -d, --homedir DIR     home directory of the account
-  -f, --keyfile         file containing SSH public keys to add for the account
-  -h, --help            display this help message and exit
-  -K, --delete-key KEY  ssh key to delete from the account (exact match, can be used multiple times)
-  -k, --key KEY         ssh public key to add for the account (can be used multiple times)
-  -m, --mail EMAIL      email address for the account
-  -r, --role ROLE       role for the account (default, admin)
-  -s, --shell SHELL     login shell of the account
-
-Notes:
-  ldapd(8) does not currently support the modrdn operation. Therefore, usernames
-  cannot be changed, since the DN's would have to change as a result. If you need
-  to change a username, you must delete and re-add the account.
-EOF
-
-  my ($username, $fullname, $homedir, $mail, $role, $shell, $keyfile, @sshkeys_add, @sshkeys_delete);
-  my $delete_all_keys = 0;
-
-  GetOptionsFromArray(\@_,
-    'A|delete-keys'  => \$delete_all_keys,
-    'c|fullname=s'   => \$fullname,
-    'd|homedir=s'    => \$homedir,
-    'f|keyfile=s'    => \$keyfile,
-    'h|help'         => sub { print $usage; exit },
-    'K|delete-key=s' => \@sshkeys_delete,
-    'k|key=s'        => \@sshkeys_add,
-    'm|mail=s'       => \$mail,
-    'r|role=s'       => \$role,
-    's|shell=s'      => \$shell,
-  ) or die $usage;
-  $username = shift or die $usage;
-
-  error 'user does not exist' unless getpwnam($username);
-  error 'invalid fullname, should be "first last"' if ($fullname and $fullname !~ /^[\w-]+\s+[\w-]+$/);
-  error 'parent of homedir does not exist' if ($homedir and ! -d dirname($homedir));
-  error 'invalid email address' if ($mail and $mail !~ /@/);
-  error 'shell is not a valid executable' if ($shell and -x $shell);
-  error '--key (-k) and --keyfile (-f) are mutually exclusive' if (@sshkeys_add && $keyfile);
-  error '--delete-keys (-A) and --delete-key (-K) are mutually exclusive' if (@sshkeys_delete && $delete_all_keys);
-  error 'keyfile is not readable' if ($keyfile && !(-f $keyfile && -r $keyfile));
-
-  if ($keyfile) {
-    open my $fh, "<", $keyfile or error "failed to open keyfile: $!\n";
-    chomp (@sshkeys_add = <$fh>);
-  }
-
-  my $r = $ldap->search(
-    base   => "uid=$username,ou=users,$basedn",
-    scope  => 'base',
-    filter => '(&(objectClass=posixAccount)(objectClass=dankAccount))',
-  );
-  error 'usermod failed: ' . $r->error if $r->is_error;
-  my $old_homedir = ($r->entries)[0]->get_value('homeDirectory');
-
-  ldap_bind();
-
-  my @changes;
-  push @changes, replace => [
-    cn        => $fullname,
-    givenName => (split ' ', $fullname)[0],
-    sn        => (split ' ', $fullname)[1]
-  ] if $fullname;
-  push @changes, replace => [ homeDirectory => $homedir ] if $homedir;
-  push @changes, replace => [ mail => $mail ] if $mail;
-  push @changes, replace => [ role => $role ] if $role;
-  push @changes, replace => [ shell => $shell ] if $shell;
-  if (@sshkeys_add and $delete_all_keys) {
-    push @changes, 'replace' => [sshPublicKey => [@sshkeys_add]];
-  } elsif (@sshkeys_add and not $delete_all_keys) {
-    push @changes, 'add' => [sshPublicKey => [@sshkeys_add]];
-  } elsif (not @sshkeys_add and $delete_all_keys) {
-    push @changes, 'delete' => [sshPublicKey => []];
-  }
-  if (@sshkeys_delete) {
-    push @changes, 'delete' => [sshPublicKey => [@sshkeys_delete]];
-  }
-
-  $r = $ldap->modify(
-    "uid=$username,ou=users,$basedn",
-    changes => [@changes]
-  );
-  error 'usermod failed: ' . $r->error if $r->is_error;
-
-  print "warning: home directory for $username was changed, but the filesystem was not modifed.\n",
-        "manual intervention may be required: $old_homedir -> $homedir\n"
-    if $homedir;
-}
-
-sub userlist {
-  my $usage =  <<EOF;
-Usage: $PROG userlist [options]
-
-Options:
-  -c, --colons  use colon delimiter and omit header for easy parsing
-  -h, --help    show this help message and exit
-EOF
-
-  my $colons = 0;
-
-  GetOptionsFromArray(\@_,
-    'c|colons'  => \$colons,
-    'h|help'        => sub { print $usage; exit },
-  ) or die "$usage\n";
-
-  my $r = $ldap->search(
-    base   => "ou=users,$basedn",
-    filter => '(&(objectClass=posixAccount)(objectClass=dankAccount))'
-  );
-  error 'userlist failed: ' . $r->error if $r->is_error;
-
-  my %users;
-  foreach my $e ($r->entries) {
-    $users{$e->get_value('uid')} = {
-      fullname => scalar $e->get_value('cn'),
-      uid      => int $e->get_value('uidNumber'),
-      gid      => int $e->get_value('gidNumber'),
-      homedir  => scalar $e->get_value('homeDirectory'),
-      shell    => scalar $e->get_value('loginShell'),
-      mail     => scalar $e->get_value('mail'),
-      role     => scalar $e->get_value('role') // 'default',
-      locked   => scalar $e->get_value('userPassword') eq '{CRYPT}*',
-      sshkeys  => [$e->get_value('sshPublicKey')],
-    };
-  }
-
-  if (not $colons) {
-    printf "%-16s %-16s %-8s %-6s  %-16s %-5s %-5s  %-7s  %s\n",
-       qw( username realname role locked shell uid gid sshkeys mail );
-    printf "%s\n", '-'x100;
-  }
-
-  my $fmt = $colons
-    ? "%s:%s:%s:%d:%s:%d:%d:%d:%s\n"
-    : "%-16s %-16s %-8s %-6s  %-16s %-5d %-5d  %-7d  %s\n";
-
-  for my $username (sort keys %users) {
-    my $u = $users{$username};
-    printf $fmt,
-      $username,
-      $u->{fullname},
-      $u->{role},
-      $u->{locked} ? ($colons ? 1 : 'yes') : ($colons ? 0 : 'no'),
-      $u->{shell},
-      $u->{uid},
-      $u->{gid},
-      scalar @{$u->{sshkeys}},
-      $u->{mail};
-  }
+  my $r = delete_user({ username => $username }); 
+  fatal $r->{error} if $r->{error};
 }
 
 sub resetpass {
@@ -478,27 +727,98 @@ EOF
   ) or die "$usage\n";
   my $username = shift or die $usage;
 
-  error '--password (-p) and --prompt-password (-P) are mutually exclusive' if ($password && $prompt_password);
+  fatal '--password (-p) and --prompt-password (-P) are mutually exclusive' if ($password && $prompt_password);
 
   $password = prompt_password("Enter password for $username") if $prompt_password;
   unless (defined $password) {
     $password = random_password();
     $random_password = 1;
   }
+  fatal 'you must specify a password' if $password =~ /^\s*$/;
 
-  error 'you must specify a password' if $password =~ /^\s*$/;
-
-  ldap_bind();
-
-  my $r = $ldap->modify(
-    "cn=$username,ou=groups,$basedn",
-    replace => {
-      userPassword => hash_password($password),
-    }
-  );
-
-  error "resetpass failed: " . $r->error if $r->is_error;
+  my $r = modify_user({
+    username => $username,
+    password => $password
+  });
+  fatal $r->{error} if $r->{error};
+ 
   print "new password: $password\n" if $random_password;
+}
+
+
+sub userinfo {
+  my $usage =  <<EOF;
+Usage: $PROG userinfo [options] USERNAME
+
+Options:
+  -h, --help  show this help message and exit
+EOF
+
+  GetOptionsFromArray(\@_,
+    'h|help' => sub { print $usage; exit },
+  ) or die $usage;
+  my $username = shift or die $usage;
+
+  my $r = get_user({ username => $username });
+  fatal $r->{error} if $r->{error};
+  my $u = $r->{result} or die "$PROG: user $username does not exist\n";
+
+  $r = get_user_groups({ username => $username });
+  fatal $r->{error} if $r->{error};
+
+  my $w = 9;
+  printf "%${w}s : %s\n", 'username',  $u->{uid};
+  printf "%${w}s : %s\n", 'locked',    $u->{userPassword} eq '{CRYPT}*' ? 'yes' : 'no';
+  printf "%${w}s : %d\n", 'uid',       $u->{uidNumber};
+  printf "%${w}s : %d\n", 'gid',       $u->{gidNumber};
+  printf "%${w}s : %s\n", 'realname',  $u->{cn};
+  printf "%${w}s : %s\n", 'homedir',   $u->{homeDirectory};
+  printf "%${w}s : %s\n", 'shell',     $u->{loginShell};
+  printf "%${w}s : %s\n", 'mail',      $u->{'mail'};
+  printf "%${w}s : %s\n", 'role',      $u->{'role'};
+  printf "%${w}s : %s\n", 'groups',    (join(',', map { $_->cn } @{$r->{result}}) or '[none]');
+
+  if ($u->{sshPublicKey}) {
+    for my $key (@{$u->{sshPublicKey}}) {
+      printf "%${w}s : %s\n", 'sshkey', $key;
+    }
+  } else {
+    printf "%${w}s : %s\n", 'sshkey', '[none]';
+  }
+}
+
+sub userlist {
+  my $usage =  <<EOF;
+Usage: $PROG userlist [options]
+
+Options:
+  -h, --help  show this help message and exit
+EOF
+
+  GetOptionsFromArray(\@_,
+    'h|help' => sub { print $usage; exit },
+  ) or die "$usage\n";
+
+  my $r = get_users();
+  fatal $r->{error} if $r->{error};
+
+  for my $u (sort { $a->{uid} cmp $b->{uid} } @{$r->{result}}) {
+    my $r = get_user_groups({ username => $u->{uid} });
+    return $r if $r->{error};
+
+    printf "%s:%s:%d:%d:%s:%s:%s:%s:%s:%d:%s\n",
+      $u->{uid},
+      $u->{userPassword} eq '{CRYPT}*' ? 'locked' : 'unlocked',
+      $u->{uidNumber},
+      $u->{gidNumber},
+      $u->{cn},
+      $u->{homeDirectory},
+      $u->{loginShell},
+      $u->{mail},
+      $u->{role},
+      scalar(@{$u->{sshPublicKey} // []}),
+      join(',', map { $_->{cn} } @{$r->{result}});
+  }
 }
 
 my $usage = <<EOF;
