@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# This is a very basic script to ease the maintenance burden of editing LDAP
+# This is a massive script to ease the maintenance burden of editing LDAP
 # users. It can be used to add/remove/modify user accounts, reset passwords,
 # etc.
 #
@@ -13,7 +13,14 @@
 # LDAP_BINDPW to authenticate. If these variables are unset it will guess
 # your bind DN based on your username and prompt you for the password.
 #
-#   -cullum
+# Requirements:
+#   - Net::LDAP (openbsd pkg: p5-ldap)
+#   - LDAP Schemas:
+#      - core
+#      - inetOrgPerson
+#      - nis
+#      - openssh-lpk (https://code.google.com/archive/p/openssh-lpk/)
+#      - a custom schema which provides the "role" attribute (I use a custom dankUser objectclass)
 
 use strict;
 use warnings;
