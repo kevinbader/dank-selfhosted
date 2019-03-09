@@ -811,7 +811,7 @@ EOF
 
 sub userinfo {
   my $usage =  <<EOF;
-Usage: $PROG userinfo [options] USERNAME
+Usage: $PROG userinfo [options] [USERNAME]
 
 Options:
   -h, --help  show this help message and exit
@@ -820,7 +820,7 @@ EOF
   GetOptionsFromArray(\@_,
     'h|help' => sub { print $usage; exit },
   ) or die $usage;
-  my $username = shift or die $usage;
+  my $username = shift // getlogin();
   die $usage if @_;
 
   my $r = get_user({ username => $username });
