@@ -100,13 +100,15 @@ if allof ( address :is "from" "root@hostname.example.com",
 
 - **IPv6:** `spamd` does not currently support IPv6, so don't go adding a AAAA record for `mail` in the zonefile!
 
-- **Monitoring spamd**: just run `spamdb` to see a list of senders currently greylisted/whitelisted.
+- **Monitoring spamd:** just run `spamdb` to see a list of senders currently greylisted/whitelisted.
 
-- **Virtual Hosts**: a default vhost will be created for `www.domain.com`, with a bare domain redirect. Shove HTML files into `/var/www/htdocs/www.domain.com` to start sharing your worthless opinions with the internet! To add more vhosts, just put a configuration file in `/etc/sites` and include it in `/etc/httpd.d/sites.conf`.
+- **Virtual Hosts:** a default vhost will be created for `www.domain.com`, with a bare domain redirect. Shove HTML files into `/var/www/htdocs/www.domain.com` to start sharing your worthless opinions with the internet! To add more vhosts, just put a configuration file in `/etc/sites` and include it in `/etc/httpd.d/sites.conf`.
 
 - **Greylisting pitfalls:** `spamd` works by [greylisting](https://www.greylisting.org/). Unfortunately, big mailers like GMail often don't retry delivery from the same address, resulting in a greylist black hole described [here](https://poolp.org/posts/2018-01-08/spfwalk/). To alleviate this, I included a daily cron job that whitelists the IP addresses found in the SPF records for some of the big mailers like GMail and Yahoo. If you notice any other problematic domains, override the to the `bigmailers` list defined in [roles/spamd/deaults/main.yml](roles/spamd/defaults/main.yml) to have their IP ranges whitelisted. (And be sure to send me a pull request!)
 
-- **Password Resets:** if a user has a shell on the box, they can reset their own password using `dankctl resetpass`. Otherwise, an administrator can do this for them. It's on my todo list to make some kind of web interface for this.
+- **Password Resets:** Passwords can be reset using `dankctl resetpass`. Currently, only an administrator can do this, since giving users write access to their LDAP user entry could allow them to write a non-hashed password into their `userPassword` field. It's on my todo list to make some kind of web interface for this.
+
+- **SSH:** SSH keys are stored in LDAP and can be added/removed using `dankctl usermod`. If a user has a shell on the box, he can run this command with his own credentials. Users must be in the `ssh` group to connect.
 
 - **Backups**: another thing I'm leaving up to you, since your requirements will almost certainly be unique. Shouldn't be too difficult:
     - **Maildirs**: tar them up, maybe encrypt them, and scp them offsite periodically.
