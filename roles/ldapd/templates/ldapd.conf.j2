@@ -16,10 +16,12 @@ namespace "{{ basedn }}" {
   index {{ i }}
   {% endfor %}
 
-  deny access to any by any
-  allow to any by "uid={{ username }},ou=users,{{ basedn }}"
-  allow bind access to children of "ou=users,{{ basedn }}" by any
-  allow read access to children of "ou=users,{{ basedn }}" by any
-  allow read access to children of "ou=groups,{{ basedn }}" by any
-  allow read access to any by any
+  deny
+  allow read access to subtree "{{ basedn }}"
+  allow bind access to children of "ou=users,{{ basedn }}"
+  deny to any attribute userPassword
+
+  {% for user in ldap_admins %}
+  allow to any by "uid={{ user }},ou=users,{{ basedn }}"
+  {% endfor %}
 }

@@ -1,2 +1,5 @@
 ---
 ypldap_sync_interval: 60
+ldap_rootpw: changeme
+ldap_admins:
+  - '{{ username }}'
