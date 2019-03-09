@@ -7,7 +7,7 @@ Matrix Homeserver, Tiny Tiny RSS, Git repos, and and DNS records using [OpenBSD]
 I use it to host everything on [c0ffee.net](https://www.c0ffee.net), but you can easily adapt 
 it for your own domain by setting a few variables in `vars.yml`.
 
-**NEW:** Read the [changelog](CHANGELOG) before running this playbook after updates! There are often breaking changes!!
+**NEW:** Read the [changelog](CHANGELOG.md) before running this playbook after updates! There are often breaking changes!!
 
 ## TLDR
 

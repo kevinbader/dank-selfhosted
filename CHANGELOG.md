@@ -1,6 +1,5 @@
 # Changelog
-Any breaking or significant changes will be documented in this file with a corresponding
-Git tag.
+Any breaking or significant changes will be documented in this file with a corresponding Git tag.
 
 # [0.2.0] - 2019-03-09
   - Switch authentication backend from /etc/passwd to LDAP.
