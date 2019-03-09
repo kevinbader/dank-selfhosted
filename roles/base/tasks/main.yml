@@ -44,11 +44,11 @@
     name: '{{ item }}'
     groups: _ssh
     append: yes
-  with_items: '{{ [backup_username] + (ssh_users | default([])) }}'
+  with_items: '{{ [provision_username] + (ssh_users | default([])) }}'
 
 - name: add ssh keys
   authorized_key:
-    user: '{{ backup_username }}'
+    user: '{{ provision_username }}'
     key: '{{ item }}'
   with_items: '{{ ssh_keys }}'
 

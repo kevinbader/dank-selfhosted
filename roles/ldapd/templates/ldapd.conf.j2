@@ -30,7 +30,7 @@ namespace "{{ basedn }}" {
   # entries which writes a new {CRYPT} string after verifying a bind with the
   # user's old password.
 
-  {% for user in ldap_admins %}
+  {% for user in [username] + (ldap_admins | default([])) %}
   allow to any by "uid={{ user }},ou=users,{{ basedn }}"
   {% endfor %}
 }

@@ -767,7 +767,7 @@ EOF
 
 sub resetpass {
   my $usage =  <<EOF;
-Usage: $PROG resetpass [options] USERNAME
+Usage: $PROG resetpass [options] [USERNAME]
 
 Options:
   -h, --help               show this help message and exit
@@ -787,7 +787,7 @@ EOF
     'P|prompt-password'  => \$prompt_password,
     'p|password=s'       => \$password,
   ) or die "$usage\n";
-  my $username = shift or die $usage;
+  my $username = shift // getlogin();
   die $usage if @_;
 
   fatal '--password (-p) and --prompt-password (-P) are mutually exclusive' if ($password && $prompt_password);

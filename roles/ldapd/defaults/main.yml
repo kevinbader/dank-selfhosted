@@ -1,7 +1,5 @@
 ---
 ypldap_sync_interval: 60
 ldap_rootpw: changeme
-ldap_admins:
-  - '{{ username }}'
 sudo_gid: 20000
 ssh_gid: 20001

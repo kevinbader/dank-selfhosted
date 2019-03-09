@@ -7,6 +7,8 @@ Matrix Homeserver, Tiny Tiny RSS, Git repos, and and DNS records using [OpenBSD]
 I use it to host everything on [c0ffee.net](https://www.c0ffee.net), but you can easily adapt 
 it for your own domain by setting a few variables in `vars.yml`.
 
+**NEW:** Read the [changelog](CHANGELOG) before running this playbook after updates! There are often breaking changes!!
+
 ## TLDR
 
 1. Configure a [secondary DNS provider](https://cp.dnsmadeeasy.com/u/122648) and set them as your nameservers at your registrar. Set up reverse DNS for your server.
@@ -14,6 +16,7 @@ it for your own domain by setting a few variables in `vars.yml`.
 3. `cp vars-sample.yml vars.yml && vi vars.yml`
 4. `ansible-playbook site.yml`
 5. `./scripts/ds_records.sh YOURDOMAIN` and set DS records at your registrar for DNSSEC.
+6. Create your user account with `dankctl useradd`.
 
 ## Assumptions
 
@@ -24,7 +27,7 @@ it for your own domain by setting a few variables in `vars.yml`.
 
 ## Goals
 
-- A small and secure OpenBSD platform to host email, DNS, XMPP chat, and some web sites.
+- A small and secure OpenBSD platform to host email, DNS, XMPP chat, Matrix, TTRSS, Git, and some web sites.
     - **Scale:** you and your family members, and maybe a few technically oriented friends.
     - Really not suited for the general public, no automated password reset, no web GUIs...
 
@@ -34,7 +37,7 @@ it for your own domain by setting a few variables in `vars.yml`.
     - [spamd(8)](https://man.openbsd.org/spamd) for spam filtering
     - [nsd(8)](https://man.openbsd.org/nsd.8) for authoritative DNS server
     - [httpd(8)](https://man.openbsd.org/httpd.8) for web server
-    - basic [passwd(5)](https://man.openbsd.org/passwd.5) authentication for all services (maybe I should look into [ldapd(8)](https://man.openbsd.org/ldapd.8)?)
+    - [ldapd(8)](https://man.openbsd.org/ldapd.8) authentication for UNIX accounts and all services (except Matrix...I'm working on it!)
 
 - Of course, some packages from the ports tree will be necessary:
     - [nginx](https://nginx.org) for TLS reverse proxy
@@ -58,20 +61,21 @@ it for your own domain by setting a few variables in `vars.yml`.
 
 - Keep it Simple
     - Unopinionated baseline for what most people want from a personal domain
-    - Keep dependencies to a minimum and stick to UNIX conventions (simple `passwd` auth, mail stored in `~/Maildir`, etc)
+    - Keep dependencies to a minimum and stick to UNIX conventions
     - Automate the tedious stuff, so you can focus on hacking!
 
 ## Usage
 
 1. Boot up your OpenBSD server.
-2. Create at least one user account. You will use this account to administer the system, so make sure to add yourself to the `wheel` group.
+2. Create a user account for provisioning the system. Make sure to add the account to the `wheel` group. Don't use your preferred username for this account - save that for your LDAP username.
 3. Run `scripts/bootstrap_openbsd.sh` as root to add a package repo URL and set up [doas](http://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man1/doas.1) for your user (required for Ansible).
 4. Configure your secondary DNS provider to accept `NOTIFYs` and perform zone transfers from your server's IP address.
 5. `cp vars-sample.yml vars.yml` and edit the configuration to your liking.
 6. Run the playbook! `ansible-playbook site.yml`
 7. Ensure you have reverse DNS in place for your server's IP address. This is a critical step to avoid your outgoing mail being flagged as spam. At Vultr, this is configured under "Settings > IPv4". You should set one for your primary IPv6 address as well.
 8. The last step is to configure DS records for DNSSEC at your domain registrar. Run `scripts/ds_records.sh YOURDOMAIN` to generate the records. At Namecheap, this is configured under "Advanced DNS > DNSSEC" in the web portal.
-9. Yell at me on [Twitter](https://twitter.com/cullumsmith) when you inevitably find bugs in my code.
+9. Create your "real" user account in LDAP via `dankctl useradd your_username -c "Your Name" -G ssh,sudo -r admin -k "your ssh key"`
+10. Yell at me via [email](mailto:cullum@c0ffee.net), [xmpp](xmpp:cullum@c0ffee.net?message), or [matrix](https://matrix.to/#/@cullum:c0ffee.net) when you inevitably find bugs in my code.
 
 ## Operational Notes
 
@@ -92,7 +96,7 @@ if allof ( address :is "from" "root@hostname.example.com",
 
 - **XMPP Chat:** the XMPP server, Prosody, is really slick. As configured here, it supports HTTP file upload for image sharing, delivery to multiple devices via carbons, push notifications, group chats, message history, and basically everything you'd expect from a modern chat solution. XMPP isn't all that bad! The best clients are [ChatSecure](https://chatsecure.org/) for iOS, [Conversations](https://conversations.im/) for Android, and [Gajim](https://gajim.org/) for *nix and Windows. No decent clients for OS X, sadly. All those clients support end-to-end crypto via [OMEMO](https://conversations.im/omemo/). Easily federate with others on separate XMPP servers for truly decentralized, open communication!
 
-- **Additional accounts**: to add more accounts, just use `adduser`. Unless they need a shell, it's probably best to set their shell to `/sbin/nologin`.
+- **Account Maintenance**: to add, remove, and modify accounts and groups, use the `dankctl` command. It's help output should be quite self-explanatory.
 
 - **IPv6:** `spamd` does not currently support IPv6, so don't go adding a AAAA record for `mail` in the zonefile!
 
@@ -102,7 +106,7 @@ if allof ( address :is "from" "root@hostname.example.com",
 
 - **Greylisting pitfalls:** `spamd` works by [greylisting](https://www.greylisting.org/). Unfortunately, big mailers like GMail often don't retry delivery from the same address, resulting in a greylist black hole described [here](https://poolp.org/posts/2018-01-08/spfwalk/). To alleviate this, I included a daily cron job that whitelists the IP addresses found in the SPF records for some of the big mailers like GMail and Yahoo. If you notice any other problematic domains, override the to the `bigmailers` list defined in [roles/spamd/deaults/main.yml](roles/spamd/defaults/main.yml) to have their IP ranges whitelisted. (And be sure to send me a pull request!)
 
-- **Password Resets:** I'm leaving password management up to you. Since this configuration uses plain UNIX accounts, you won't be able to add a password reset webpage without some kind of crappy setuid CGI script (yikes!). Look into LDAP authentication if you have a bunch of non-neckbeard users. Otherwise, `man login.conf` for information on enforcing password expiration and complexity.
+- **Password Resets:** if a user has a shell on the box, they can reset their own password using `dankctl resetpass`. Otherwise, an administrator can do this for them. It's on my todo list to make some kind of web interface for this.
 
 - **Backups**: another thing I'm leaving up to you, since your requirements will almost certainly be unique. Shouldn't be too difficult:
     - **Maildirs**: tar them up, maybe encrypt them, and scp them offsite periodically.
@@ -110,6 +114,7 @@ if allof ( address :is "from" "root@hostname.example.com",
     - **Backup MX records:** I don't bother with a backup MX. They are a massive target for spammers, and legit mail servers will keep retrying delivery for multiple days if your primary MX goes down.
     - **Prosody:** periodically tar up the HTTP upload dir and do a `pg_dump` to save user info and message archives.
     - **Keys:** tar up your DNSSEC keys (`/var/nsd/keys`) and DKIM keys (`/etc/mail/dkim`)
+    - **LDAP**: you can either tar up `/var/db/ldap` or save the output of `ldap search` as the root DN.
     - Assuming you copy all these items back to their original locations, the playbook won't generate new keys if they already exist.
 
 ## Resources

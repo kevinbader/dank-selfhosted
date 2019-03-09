@@ -36,6 +36,7 @@
     owner: _gitea
     group: _gitea
     mode: 0640
+  notify: restart gitea
 
 - include: ../../../tasks/nginx_proxy.yml
   vars:

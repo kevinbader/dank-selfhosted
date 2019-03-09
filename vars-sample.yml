@@ -5,9 +5,15 @@
 hostname: puffy             # the hostname of this machine
 domain: example.com         # your domain name
 
-username: your_username     # your username on this machine. account must already exist.
-realname: Your Name         # needed for ZNC...
-ssh_keys:                   # you MUST add an SSH key for yourself here or you will be locked out!
+provision_username: admin   # username for the local user that will run ansible. account must already
+                            #   exist as a normal account in /etc/passwd and be a member of the wheel group.
+                            #   This will also be your backdoor account in case ldap goes down.
+
+username: your_username     # username of your "real" account that you will use once everything is set up.
+                            #   This account will not exist until you create it with `dankctl useradd`.
+
+ssh_keys:                   # ssh keys for the provision account. you MUST add an SSH key for yourself here
+                            #   or you will be locked out!
   - ssh-ed25519 AAAAasdf....
 
 interface: vio0             # name of your primary network interface
@@ -44,6 +50,9 @@ ntp_servers:                # Upstream NTP servers
 
 sshd_port: 11522            # SSH port. Don't choose 22 unless you like being hammered 24/7 by botnets!
 
+ldap_rootpw: supersecret    # The default is changeme. You may want to put this in an ansible vault. It
+                            #   will be converted to a blowfish hash in ldapd.conf.
+
 
 # ===== OPTIONAL VARIABLES =====
 private_interface: vio1     # If your hosting provider provides a private network, you can set it here.
@@ -52,7 +61,11 @@ private_netmask: 255.255.240.0
 private_mtu: 1450
 private_cidr: 10.0.0.0/20
 
-ssh_users:                  # By default, only your user account is added to the ssh group. List any
+ldap_admins:                # By default, only your LDAP username is given R/W access to the LDAP tree.
+  - bob                     #   List any additional usernames here to give them write access to LDAP.
+  - alice                   #   Be careful! By modifying their own group these users could easily get root.
+
+ssh_users:                  # By default, only the provision account is added to the ssh group. List any
   - bob                     #  additional user accounts here to grant them SSH access. The accounts
   - alice                   #  must already exist.
 
