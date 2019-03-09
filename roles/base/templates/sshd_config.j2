@@ -10,6 +10,9 @@ Banner none
 VersionAddendum none
 Subsystem	sftp	internal-sftp
 
+AuthorizedKeysCommand /usr/local/bin/sshkeys
+AuthorizedKeysCommandUser  nobody
+
 AllowGroups ssh _ssh _gitea
 
 Match Group _gitea

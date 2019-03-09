@@ -73,6 +73,12 @@
       localhost
     dest: /etc/yp/{{ domain }}
 
+- name: create sshkeys command
+  template:
+    src: sshkeys.j2
+    dest: /usr/local/bin/sshkeys
+    mode: 0555
+
 - name: start and enable services
   service:
     name: '{{ item }}'
