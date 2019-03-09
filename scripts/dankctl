@@ -417,21 +417,22 @@ sub create_homedir {
   if (-d $dir) {
     print "warning: $dir already exists\n";
   } else {
-    my $ok = 0;
+    my $ok;
     if ($< == 0) {
-      $ok || ($ok |= mkdir $dir, 0700);
-      $ok || ($ok |= chown $uid, $uid, $dir);
+      $ok   = mkdir($dir, 0700);
+      $ok &&= chown($uid, $uid, $dir);
     } else {
       print "invoking doas to create home directory\n";
       my %ENV_COPY = %ENV;
       %ENV = ();
-      $ok || ($ok |= system('/usr/bin/doas', '/bin/mkdir', $dir));
-      $ok || ($ok |= system('/usr/bin/doas', '/bin/chmod', '700', $dir));
-      $ok || ($ok |= system('/usr/bin/doas', '/usr/sbin/chown', "$uid:$uid", $dir));
+      $ok   = system('/usr/bin/doas', '/bin/mkdir', $dir);
+      $ok ||= system('/usr/bin/doas', '/bin/chmod', '700', $dir);
+      $ok ||= system('/usr/bin/doas', '/usr/sbin/chown', "$uid:$uid", $dir);
+      $ok = !$ok;
       %ENV = %ENV_COPY;
     }
 
-    if ($ok != 0) {
+    if (not $ok) {
       my $error = "could not create $dir: $!";
       rmdir($dir);
       return { error => $error };
@@ -878,7 +879,7 @@ EOF
       $u->{loginShell},
       $u->{mail},
       $u->{role},
-      scalar(flatten[$u->{sshPublicKey}]),
+      scalar(flatten($u->{sshPublicKey} // [])),
       join(',', map { $_->{cn} } @{$r->{result}});
   }
 }

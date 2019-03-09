@@ -23,3 +23,25 @@
     - users
     - groups
     - services
+
+- name: create ssh group
+  ldap_entry:
+    bind_dn: '{{ ldap_rootdn }}'
+    bind_pw: '{{ ldap_rootpw }}'
+    dn: cn=ssh,ou=groups,{{ basedn }}
+    objectClass: posixGroup
+    attributes:
+      cn: ssh
+      gidNumber: '{{ ssh_gid }}'
+      description: users allowed to connect via ssh
+
+- name: create sudo group
+  ldap_entry:
+    bind_dn: '{{ ldap_rootdn }}'
+    bind_pw: '{{ ldap_rootpw }}'
+    dn: cn=sudo,ou=groups,{{ basedn }}
+    objectClass: posixGroup
+    attributes:
+      cn: sudo
+      gidNumber: '{{ sudo_gid }}'
+      description: users allowed to become superuser
