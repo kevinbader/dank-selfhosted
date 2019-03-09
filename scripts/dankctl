@@ -831,7 +831,6 @@ EOF
 
   my $w = 8;
   printf "%${w}s: %s\n", 'username',  $u->{uid};
-  printf "%${w}s: %s\n", 'locked',    $u->{userPassword} eq '{CRYPT}*' ? 'yes' : 'no';
   printf "%${w}s: %d\n", 'uid',       $u->{uidNumber};
   printf "%${w}s: %d\n", 'gid',       $u->{gidNumber};
   printf "%${w}s: %s\n", 'realname',  $u->{cn};
@@ -870,9 +869,8 @@ EOF
     my $r = get_user_groups({ username => $u->{uid} });
     return $r if $r->{error};
 
-    printf "%s:%s:%d:%d:%s:%s:%s:%s:%s:%d:%s\n",
+    printf "%s:%d:%d:%s:%s:%s:%s:%s:%d:%s\n",
       $u->{uid},
-      $u->{userPassword} eq '{CRYPT}*' ? 'locked' : 'unlocked',
       $u->{uidNumber},
       $u->{gidNumber},
       $u->{cn},
