@@ -5,6 +5,7 @@ server {{ domain }} {
   include "/etc/httpd.d/acme.conf"
 
   location "/.well-known/*" {
+    block return 301 "https://{{ domain }}$REQUEST_URI"
     root "/htdocs/well-known"
     request strip 1
   }
