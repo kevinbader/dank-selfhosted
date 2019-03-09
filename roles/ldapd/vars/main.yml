@@ -1,0 +1,18 @@
+---
+basedn: "{{ domain.split('.') | map('regex_replace', '(.*)', 'dc=\\1') | join(',') }}"
+ldap_rootdn: cn=root,{{ basedn }}
+
+ldap_schemas:
+  - openssh-lpk
+  - dank
+
+ldap_indexes:
+  - objectClass
+  - cn
+  - ou
+  - uid
+  - uidNumber
+  - gidNumber
+  - sn
+  - givenName
+  - mail

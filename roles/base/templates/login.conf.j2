@@ -58,3 +58,10 @@ dovecot:\
 	:openfiles-cur=512:\
 	:openfiles-max=2048:\
 	:tc=daemon:
+
+ldap:\
+  :auth=-ldap:\
+  :x-ldap-server=localhost:\
+  :x-ldap-basedn=ou=users,{{ basedn }}:\
+  :x-ldap-filter=(&(objectclass=posixAccount)(uid=%u)):\
+  :tc=default:

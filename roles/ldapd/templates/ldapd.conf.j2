@@ -1,0 +1,36 @@
+listen on "/var/run/ldapi"
+listen on "/var/www/run/ldapi"
+listen on lo0 secure
+
+schema "/etc/ldap/core.schema"
+schema "/etc/ldap/inetorgperson.schema"
+schema "/etc/ldap/nis.schema"
+schema "/etc/ldap/dank.schema"
+schema "/etc/ldap/openssh-lpk.schema"
+
+namespace "{{ basedn }}" {
+  rootdn "{{ ldap_rootdn }}"
+  rootpw "{CRYPT}{{ lookup('pipe', 'encrypt -b a ' + ldap_rootpw|quote ) }}"
+
+  {% for i in ldap_indexes %}
+  index {{ i }}
+  {% endfor %}
+
+  deny
+  allow read access to subtree "{{ basedn }}"
+  allow bind access to children of "ou=users,{{ basedn }}"
+  allow write access to any attribute sshPublicKey by self
+  allow write access to any attribute loginShell by self
+  deny to any attribute userPassword
+
+  # TODO: need a way for user's to change their own password, but there's nothing
+  # stopping them from writing a plain text password into their entry.
+  #
+  # Solution is probably a service user with write access to all userPassword
+  # entries which writes a new {CRYPT} string after verifying a bind with the
+  # user's old password.
+
+  {% for user in [username] + (ldap_admins | default([])) %}
+  allow to any by "uid={{ user }},ou=users,{{ basedn }}"
+  {% endfor %}
+}

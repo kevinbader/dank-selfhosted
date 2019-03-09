@@ -36,8 +36,7 @@
     owner: _gitea
     group: _gitea
     mode: 0640
-  # sadly this file gets regenerated on each restart with different secret keys
-  changed_when: False
+  notify: restart gitea
 
 - include: ../../../tasks/nginx_proxy.yml
   vars:

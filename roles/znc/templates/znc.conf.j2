@@ -1,4 +1,5 @@
 AnonIPLimit = 10
+AuthOnlyViaModule = true
 ConnectDelay = 5
 HideVersion = true
 LoadModule = webadmin
@@ -48,6 +49,7 @@ Version = 1.6.5
 
 <User {{ username }}>
 	Admin = true
+  AuthOnlyViaModule = true
 	Allow = *
 	AltNick = {{ username }}_
 	AppendTimestamp = false
@@ -67,7 +69,7 @@ Version = 1.6.5
 	Nick = {{ username }}
 	PrependTimestamp = true
 	QuitMsg = %znc%
-	RealName = {{ realname }}
+	RealName = {{ username }}
 	TimestampFormat = [%H:%M:%S]
 
   // even though we are using imap authentication, we have to set a password

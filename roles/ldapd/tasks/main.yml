@@ -1,0 +1,90 @@
+---
+- name: install packages
+  openbsd_pkg:
+    name: '{{ item }}'
+    state: installed
+  with_items:
+    - py-ldap
+    - login_ldap
+
+- name: copy schemas
+  copy:
+    src: '{{ item }}.schema'
+    dest: /etc/ldap/{{ item }}.schema
+    mode: 0644
+  with_items:
+    - openssh-lpk
+    - dank
+
+- name: generate ldapd.conf
+  template:
+    src: ldapd.conf.j2
+    dest: /etc/ldapd.conf
+    mode: 0600
+  notify: restart ldap
+
+- name: enable and start ldapd
+  service:
+    name: ldapd
+    enabled: yes
+    state: started
+
+- include: populate_ldap.yml
+
+- name: set yp domain
+  copy:
+    content: |
+      {{ domain }}
+    dest: /etc/defaultdomain
+  register: domainname
+
+- name: run domainname
+  command: domainname {{ domain }}
+  when: domainname.changed
+
+- name: add yp passwd marker
+  lineinfile:
+    dest: /etc/master.passwd
+    line: '+:*::::::::'
+    insertafter: EOF
+  notify: pwd_mkdb
+
+- name: add yp group marker
+  lineinfile:
+    dest: /etc/group
+    line: '+:*::'
+    insertafter: EOF
+
+- name: generate ypldap configuration
+  template:
+    src: ypldap.conf.j2
+    dest: /etc/ypldap.conf
+    mode: 0600
+  notify: restart ldap
+
+- name: create /etc/yp
+  file:
+    path: /etc/yp
+    state: directory
+
+- name: specify localhost yp server
+  copy:
+    content: |
+      localhost
+    dest: /etc/yp/{{ domain }}
+
+- name: create sshkeys command
+  template:
+    src: sshkeys.j2
+    dest: /usr/local/bin/sshkeys
+    mode: 0555
+
+- name: start and enable services
+  service:
+    name: '{{ item }}'
+    enabled: yes
+    state: started
+  with_items:
+    - portmap
+    - ypldap
+    - ypbind

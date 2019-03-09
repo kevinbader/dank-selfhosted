@@ -1,0 +1,6 @@
+---
+- name: install dankctl
+  copy:
+    src: dankctl.pl
+    dest: /usr/local/bin/dankctl
+    mode: 0555

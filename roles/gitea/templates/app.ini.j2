@@ -67,7 +67,7 @@ HTTP_PORT = 0
 REDIRECT_OTHER_PORT = false
 UNIX_SOCKET_PERMISSION = 666
 DISABLE_SSH = false
-SSH_DOMAIN = %(DOMAIN)s
+SSH_DOMAIN = git.{{ domain }}
 SSH_PORT = {{ sshd_port }}
 SSH_ROOT_PATH =
 SSH_KEY_TEST_PATH =
@@ -229,8 +229,8 @@ SCHEDULE = @every 24h
 OLDER_THAN = 24h
 
 [cron.sync_external_users]
-RUN_AT_START = false
-SCHEDULE = @every 24h
+RUN_AT_START = true
+SCHEDULE = @every 10m
 UPDATE_EXISTING = true
 
 [git]

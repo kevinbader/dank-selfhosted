@@ -1,0 +1,9 @@
+---
+- name: domainname
+  command: domainname {{ domain }}
+
+- name: pwd_mkdb
+  command: pwd_mkdb -p /etc/master.passwd
+
+- name: restart ldap
+  include: restart_ldap.yml

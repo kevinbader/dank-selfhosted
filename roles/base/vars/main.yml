@@ -8,3 +8,4 @@ syslog_log_files:
   - php-fpm
   - relayd
   - turnserver
+basedn: "{{ domain.split('.') | map('regex_replace', '(.*)', 'dc=\\1') | join(',') }}"

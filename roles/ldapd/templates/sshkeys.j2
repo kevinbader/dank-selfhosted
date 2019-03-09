@@ -1,0 +1,10 @@
+#!/bin/sh
+
+USAGE="usage: $(basename "$0") USERNAME"
+
+if [ -z "$1" ] ; then
+  echo $USAGE
+  exit 1
+fi
+
+exec ldap search -b "uid=$1,ou=users,{{ basedn }}" sshPublicKey | sed 's/^sshPublicKey: //'

@@ -1,0 +1,10 @@
+attributetype ( 1.3.6.1.4.1.30155.116.2 NAME 'role'
+  DESC 'Account role denoting privilege level'
+  EQUALITY caseExactIA5Match
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+
+objectclass ( 1.3.6.1.4.1.30155.116.1 NAME 'dankAccount'
+  SUP top
+  AUXILIARY
+  DESC 'User account for of dank-selfhosted services'
+  MUST ( role ) )

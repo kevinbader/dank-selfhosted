@@ -37,18 +37,18 @@
 - name: create ssh group
   group:
     gid: 22
-    name: ssh
+    name: _ssh
 
 - name: add users to ssh group
   user:
     name: '{{ item }}'
-    groups: ssh
+    groups: _ssh
     append: yes
-  with_items: '{{ [username] + (ssh_users | default([])) }}'
+  with_items: '{{ [provision_username] + (ssh_users | default([])) }}'
 
 - name: add ssh keys
   authorized_key:
-    user: '{{ username }}'
+    user: '{{ provision_username }}'
     key: '{{ item }}'
   with_items: '{{ ssh_keys }}'
 
@@ -63,9 +63,9 @@
     src: hosts.j2
     dest: /etc/hosts
 
-- name: copy login.conf
-  copy:
-    src: login.conf
+- name: generate login.conf
+  template:
+    src: login.conf.j2
     dest: /etc/login.conf
   notify: rebuild login database
 
