@@ -6,8 +6,6 @@ server {{ domain }} {
 
   location "/.well-known/*" {
     block return 301 "https://{{ domain }}$REQUEST_URI"
-    root "/htdocs/well-known"
-    request strip 1
   }
 
   location * {
@@ -18,6 +16,14 @@ server {{ domain }} {
 server {{ domain }} {
   include "/etc/httpd.d/https.conf"
   root "/nonexistent"
+
+  location "/.well-known/caldav" {
+    block return 301 "https://dav.{{ domain }}/caldav.php/.well-known/caldav"
+  }
+
+  location "/.well-known/carddav" {
+    block return 301 "https://dav.{{ domain }}/caldav.php/.well-known/carddav"
+  }
 
   location "/.well-known/*" {
     root "/htdocs/well-known"

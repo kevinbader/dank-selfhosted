@@ -1,0 +1,11 @@
+---
+php_version: 7.2
+davical_home: /var/www/htdocs/davical
+awl_home: /var/www/htdocs/awl
+davical_fpm_sock: /var/www/run/davical.sock
+basedn: "{{ domain.split('.') | map('regex_replace', '(.*)', 'dc=\\1') | join(',') }}"
+
+davical_version: '1.1.8'
+awl_version: '0.60'
+davical_tarball: https://www.davical.org/downloads/davical_{{ davical_version }}.orig.tar.xz
+awl_tarball: https://www.davical.org/downloads/awl_{{ awl_version }}.orig.tar.xz

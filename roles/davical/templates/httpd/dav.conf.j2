@@ -1,0 +1,9 @@
+server dav.{{ domain }} {
+  include "/etc/httpd.d/https.conf"
+  root "/htdocs/davical/htdocs"
+  directory index index.php
+
+  location "*.php*" {
+    fastcgi socket "/run/davical.sock"
+  }
+}

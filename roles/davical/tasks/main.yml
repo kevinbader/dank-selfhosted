@@ -1,0 +1,129 @@
+---
+- name: install dependencies
+  openbsd_pkg:
+    name: '{{ item }}'
+    state: installed
+  with_items:
+    - gtar
+    - p5-YAML
+    - p5-DBD-Pg
+    - p5-DBI
+
+- name: create davical user
+  user:
+    name: _davical
+    comment: 'Davical Pseudo-User'
+    shell: /sbin/nologin
+    home: '{{ davical_home }}'
+    uid: '{{ davical_uid }}'
+    createhome: no
+
+- name: create davical directory
+  file:
+    path: '{{ davical_home }}'
+    state: directory
+
+- name: generate httpd vhost
+  template:
+     src: httpd/dav.conf.j2
+     dest: /etc/sites/dav.conf
+  notify: reload httpd
+
+- name: enable davical vhost
+  lineinfile:
+    path: /etc/httpd.d/sites.conf
+    line: include "/etc/sites/dav.conf"
+  notify: reload httpd
+
+- include: ../../../tasks/nginx_proxy.yml
+  vars:
+    name: dav
+    port: '{{ httpd_secure_port }}'
+
+- name: create php directories
+  file:
+    path: /var/www/cache/{{ item }}
+    state: directory
+    owner: _davical
+    group: _davical
+    mode: 0700
+  with_items:
+    - davical
+    - davical/session
+    - davical/upload
+
+- name: generate php-fpm config
+  template:
+    src: php/davical.conf.j2
+    dest: /etc/php-fpm.d/davical.conf
+  notify: restart php-fpm
+
+- name: enable php-fpm
+  service:
+    name: php72_fpm
+    enabled: yes
+    state: started
+
+- name: install davical
+  unarchive:
+    src: '{{ davical_tarball }}'
+    dest: '{{ davical_home }}'
+    owner: root
+    group: wheel
+    remote_src: yes
+
+- name: install awl
+  unarchive:
+    src: '{{ awl_tarball }}'
+    dest: '{{ awl_home }}'
+    owner: root
+    group: wheel
+    remote_src: yes
+
+- name: check if database is initialized
+  command: psql -U davical_app davical -c 'SELECT 1 FROM awl_db_revision'
+  become_user: _davical
+  changed_when: False
+  failed_when: False
+  register: check_db
+
+- name: initialize database
+  shell: sed '/^export PGOPTIONS=/d' '{{ davical_home }}/dba/create-database.sh' | sh -s davical '{{ davical_adminpw }}'
+  become_user: _postgresql
+  environment:
+    PSQLOPTS: '-U postgres'
+  args:
+    chdir: '{{ davical_home }}/dba'
+    warn: False
+  when: check_db.rc != 0
+
+- name: read cal dkim private key
+  slurp:
+    src: /etc/mail/dkim/cal.private.key
+  register: slurp_dkim_private_key
+
+- name: set cal dkim private key
+  set_fact:
+    davical_dkim_private_key: '{{ slurp_dkim_private_key.content }}'
+
+- name: generate configuration
+  template:
+    src: config.php.j2
+    dest: /var/www/htdocs/davical/config/config.php
+    owner: root
+    group: _davical
+    mode: 0640
+
+- meta: flush_handlers
+
+- name: sync ldap accounts
+  command: php-{{ php_version }} -d error_reporting="E_ERROR" "{{ davical_home }}/scripts/cron-sync-ldap.php" dav.{{ domain }}
+  become_user: _davical
+  changed_when: False
+
+- name: add ldap sync cron job
+  cron:
+    name: davical ldap sync
+    user: _davical
+    job: /usr/local/bin/php-{{ php_version }} -d error_reporting="E_ERROR" "{{ davical_home }}/scripts/cron-sync-ldap.php" dav.{{ domain }}
+    minute: '*/5'

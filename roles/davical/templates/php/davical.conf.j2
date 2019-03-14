@@ -1,0 +1,24 @@
+[davical]
+
+user = _davical
+group = _davical
+listen = {{ davical_fpm_sock }}
+
+listen.owner = www
+listen.group = www
+;listen.mode = 0660
+
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+
+chroot = /var/www
+chdir = /htdocs/davical
+
+php_admin_value[open_basedir] = /htdocs/davical/htdocs/:/htdocs/davical/config/config.php:/htdocs/davical/inc/:/htdocs/awl/inc/:/tmp/.s.PGSQL.5432
+php_admin_value[include_path] = /htdocs/awl/inc:/htdocs/davical/inc
+php_admin_value[session.name] = DAVICAL
+php_admin_value[session.save_path] = /cache/davical/session
+php_admin_value[upload_tmp_dir] = /cache/davical/upload

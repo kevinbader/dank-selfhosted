@@ -17,7 +17,7 @@ pm.max_spare_servers = 3
 chroot = /var/www
 chdir = /htdocs/ttrss
 
-php_admin_value[open_basedir] = /htdocs/ttrss/;/tmp/.s.PGSQL.5432
+php_admin_value[open_basedir] = /htdocs/ttrss/:/tmp/.s.PGSQL.5432
 php_admin_value[session.name] = TTRSS
 php_admin_value[session.save_path] = /cache/ttrss/session
 php_admin_value[upload_tmp_dir] = /cache/ttrss/upload

@@ -1,0 +1,10 @@
+---
+httpd_secure_port: 8080
+davical_adminpw: changeme
+davical_uid: 903
+davical_max_upload_bytes: 5000000
+davical_refresh_interval: 60
+davical_locale: en_NZ
+davical_ignore_groups:
+  - ssh
+  - sudo

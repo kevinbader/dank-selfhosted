@@ -8,3 +8,12 @@
 - name: set dkim records
   set_fact:
     dkim_records: '{{ dkim_records_b64.content | b64decode }}'
+
+- name: read cal dkim records file
+  slurp:
+    src: /etc/mail/dkim/cal.txt
+  register: cal_dkim_records_b64
+
+- name: set cal dkim records
+  set_fact:
+    cal_dkim_records: '{{ cal_dkim_records_b64.content | b64decode }}'

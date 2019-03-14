@@ -23,10 +23,18 @@
   when: private_interface is defined
   notify: enable private network
 
+- name: create /etc in www chroot
+  file:
+    path: /var/www/etc
+    state: directory
+
 - name: generate resolv.conf
   template:
     src: resolv.conf.j2
-    dest: /etc/resolv.conf
+    dest: '{{ item }}'
+  with_items:
+    - /etc/resolv.conf
+    - /var/www/etc/resolv.conf
 
 - name: generate ntpd.conf
   template:
@@ -61,7 +69,10 @@
 - name: generate /etc/hosts
   template:
     src: hosts.j2
-    dest: /etc/hosts
+    dest: '{{ item }}'
+  with_items:
+    - /etc/hosts
+    - /var/www/etc/hosts
 
 - name: generate login.conf
   template:

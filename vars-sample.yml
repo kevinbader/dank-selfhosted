@@ -50,8 +50,11 @@ ntp_servers:                # Upstream NTP servers
 
 sshd_port: 11522            # SSH port. Don't choose 22 unless you like being hammered 24/7 by botnets!
 
-ldap_rootpw: supersecret    # The default is changeme. You may want to put this in an ansible vault. It
+ldap_rootpw: changeme       # The default is changeme. You may want to put this in an ansible vault. It
                             #   will be converted to a blowfish hash in ldapd.conf.
+
+davical_adminpw: changeme   # This is the default password for the "admin" caldav user. You should change
+                            #   it in the web interface when you log in for the first time.
 
 
 # ===== OPTIONAL VARIABLES =====

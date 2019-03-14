@@ -42,6 +42,8 @@ turn IN A {{ ip }}
 turn IN AAAA {{ ip6 }}
 git IN A {{ ip }}
 git IN AAAA {{ ip6 }}
+dav IN A {{ ip }}
+dav IN AAAA {{ ip6 }}
 
 {% for name, record in (a_records | default({})).iteritems() %}
 {{ name }} IN A {{ record.ip }}
@@ -59,6 +61,7 @@ ns{{ loop.index }} IN AAAA {{ addr }}
 
 ; DKIM
 {{ dkim_records }}
+{{ cal_dkim_records }}
 
 ; SRV records
 {% for r in _srv_records  + (srv_records | default([])) %}

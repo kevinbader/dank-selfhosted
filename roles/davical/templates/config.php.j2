@@ -1,0 +1,67 @@
+<?php
+$c->pg_connect[]  = 'dbname=davical user=davical_app';
+$c->system_name   = '{{ domain }} CalDAV';
+$c->admin_email   = 'root@{{ domain }}';
+
+$c->restrict_setup_to_admin    = true;
+$c->home_calendar_name         = 'calendar';
+$c->home_addressbook_name      = 'addressbook';
+$c->carddav_max_resource_size  = {{ davical_max_upload_bytes }};
+$c->default_privileges         = array('read-free-busy', 'schedule-deliver');
+$c->external_refresh           = {{ davical_refresh_interval }};
+$c->default_locale             = '{{ davical_locale}}';
+$c->allow_get_email_visibility = true;
+
+$c->enable_scheduling        = true;
+$c->scheduling_dkim_domain   = 'dav.{{ domain }}';
+$c->scheduling_dkim_selector = 'cal';
+$c->schedule_private_key     = '{{ davical_dkim_private_key }}';
+
+$c->trust_x_forwarded = true;
+
+$c->authenticate_hook['call'] = 'LDAP_check';
+$c->authenticate_hook['config'] = array(
+  'host'            => '127.0.0.1',
+  'port'            => '389',
+  'protocolVersion' => '3',
+  'optReferrals'    => 0,
+  'networkTimeout'  => 5,
+  'scope'           => 'subtree',
+  'baseDNUsers'     => 'ou=users,{{ basedn }}',
+  'filterUsers'     => 'objectClass=inetOrgPerson',
+  'baseDNGroups'    => 'ou=groups,{{ basedn }}',
+  'filterGroups'    => 'objectClass=posixGroup',
+  'mapping_field'   => array(
+    'username' => 'uid',
+    'modified' => 'modifyTimestamp',
+    'fullname' => 'cn',
+    'email'    =>'mail',
+   ),
+  'group_mapping_field' => array(
+    'username' => 'cn',
+    'modified' => 'modifyTimestamp',
+    'fullname' => 'cn' ,
+    'members'  => 'memberUid',
+  ),
+  'group_member_dnfix' => false,
+  'default_value'      => array(
+    'date_format_type' => 'I',
+    'locale'           => '{{ davical_locale }}',
+  ),
+ 'format_updated'=> array(
+   'Y' => array(0,4),
+   'm' => array(4,2),
+   'd' => array(6,2),
+   'H' => array(8,2),
+   'M' => array(10,2),
+   'S' => array(12,2),
+  ),
+);
+
+$c->do_not_sync_group_from_ldap = array(
+  {% for group in davical_ignore_groups %}
+  '{{ group }}' => true,
+  {% endfor %}
+);
+
+include('drivers_ldap.php');

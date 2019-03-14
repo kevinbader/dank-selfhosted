@@ -16,11 +16,12 @@
     - { role: smtpd,      tags: ['smtpd']      }
     - { role: spamd,      tags: ['spamd']      }
     - { role: postgresql, tags: ['postgresql'] }
+    - { role: ldapd,      tags: ['ldapd']      }
     - { role: prosody,    tags: ['prosody']    }
     - { role: znc,        tags: ['znc']        }
     - { role: php,        tags: ['php']        }
     - { role: ttrss,      tags: ['ttrss']      }
     - { role: synapse,    tags: ['synapse']    }
     - { role: gitea,      tags: ['gitea']      }
-    - { role: ldapd,      tags: ['ldapd']      }
+    - { role: davical,    tags: ['davical']    }
     - { role: dank,       tags: ['dank']       }

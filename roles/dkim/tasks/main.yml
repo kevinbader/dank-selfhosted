@@ -33,6 +33,21 @@
   args:
     creates: /etc/mail/dkim/dkim.txt
 
+- name: generate cal dkim private key
+  command: openssl genrsa -out /etc/mail/dkim/cal.private.key 2048
+  args:
+    creates: /etc/mail/dkim/cal.private.key
+
+- name: generate cal dkim public key
+  command: openssl rsa -in /etc/mail/dkim/cal.private.key -pubout -out /etc/mail/dkim/cal.public.key
+  args:
+    creates: /etc/mail/dkim/cal.public.key
+
+- name: generate cal dkim TXT record
+  shell: ( echo p= ; grep -Ev -- '-+(BEGIN|END) PUBLIC KEY-+' /etc/mail/dkim/cal.public.key) | tr -d '\n' | fold -w255 | awk 'BEGIN { print "cal._domainkey.dav     IN TXT ( \"v=DKIM1; k=rsa; \"" } { print "    " "\"" $0 "\"" } END { print ") ;" }' > /etc/mail/dkim/cal.txt
+  args:
+    creates: /etc/mail/dkim/cal.txt
+
 - name: enable and start daemon
   service:
     name: dkimproxy_out

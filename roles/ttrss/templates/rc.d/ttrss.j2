@@ -1,6 +1,7 @@
 #!/bin/ksh
 
 daemon="{{ php_path }}"
+#TODO: log this to a file
 daemon_flags="-d disable_functions= {{ ttrss_home }}/update_daemon2.php --quiet"
 daemon_user="_ttrss"
 
