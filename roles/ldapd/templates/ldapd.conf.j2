@@ -10,6 +10,7 @@ schema "/etc/ldap/openssh-lpk.schema"
 
 namespace "{{ basedn }}" {
   rootdn "{{ ldap_rootdn }}"
+  # TODO: need logic to use old password hash unless rootpw was changed
   rootpw "{CRYPT}{{ lookup('pipe', 'encrypt -b a ' + ldap_rootpw|quote ) }}"
 
   {% for i in ldap_indexes %}

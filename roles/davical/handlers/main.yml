@@ -11,5 +11,5 @@
 
 - name: restart php-fpm
   service:
-    name: php72_fpm
+    name: '{{ php_fpm_daemon }}'
     state: restarted

@@ -61,7 +61,6 @@ ns{{ loop.index }} IN AAAA {{ addr }}
 
 ; DKIM
 {{ dkim_records }}
-{{ cal_dkim_records }}
 
 ; SRV records
 {% for r in _srv_records  + (srv_records | default([])) %}

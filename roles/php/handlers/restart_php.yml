@@ -1,0 +1,12 @@
+---
+- name: check if any pools are defined
+  find:
+    paths: /etc/php-fpm.d
+  register: php_pools
+
+- name: restart php_fpm
+  service:
+    name: '{{ php_fpm_daemon }}'
+    enabled: yes
+    state: restarted
+  when: php_pools.matched | int > 0

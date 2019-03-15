@@ -60,7 +60,7 @@
 
 - name: enable php-fpm
   service:
-    name: php72_fpm
+    name: '{{ php_fpm_daemon }}'
     enabled: yes
     state: started
 
@@ -97,9 +97,9 @@
     warn: False
   when: check_db.rc != 0
 
-- name: read cal dkim private key
+- name: read dkim private key
   slurp:
-    src: /etc/mail/dkim/cal.private.key
+    src: '{{ dkim_home }}/private/dkim.key'
   register: slurp_dkim_private_key
 
 - name: set cal dkim private key

@@ -1,2 +1,3 @@
 ---
-# TODO: add restart hander iff there are pools defined
+- name: restart php-fpm
+  include: restart_php.yml

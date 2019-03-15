@@ -1,19 +1,10 @@
 # store DKIM records into dkim_records variable
 ---
-- name: read dkim records file
-  slurp:
-    src: /etc/mail/dkim/dkim.txt
-  register: dkim_records_b64
+- name: read dkim records
+  shell: cat {{ dkim_home }}/*.txt
+  register: cat_dkim_records
+  changed_when: False
 
 - name: set dkim records
   set_fact:
-    dkim_records: '{{ dkim_records_b64.content | b64decode }}'
-
-- name: read cal dkim records file
-  slurp:
-    src: /etc/mail/dkim/cal.txt
-  register: cal_dkim_records_b64
-
-- name: set cal dkim records
-  set_fact:
-    cal_dkim_records: '{{ cal_dkim_records_b64.content | b64decode }}'
+    dkim_records: '{{ cat_dkim_records.stdout }}'

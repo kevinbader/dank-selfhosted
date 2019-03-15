@@ -1,5 +1,7 @@
 ---
 php_version: 7.2
+php_fpm_daemon: 'php{{ php_version | replace(".", "") }}_fpm'
+dkim_home: /etc/dkim
 davical_home: /var/www/htdocs/davical
 awl_home: /var/www/htdocs/awl
 davical_fpm_sock: /var/www/run/davical.sock

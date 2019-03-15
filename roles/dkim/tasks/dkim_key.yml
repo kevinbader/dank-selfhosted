@@ -1,0 +1,15 @@
+---
+- name: generate dkim private key
+  command: openssl genrsa -out '{{ dkim_home }}/private/{{ selector }}.key' 2048
+  args:
+    creates: '{{ dkim_home }}/private/{{ selector}}.key'
+
+- name: generate dkim public key
+  command: openssl rsa -in '{{ dkim_home }}/private/{{ selector }}.key' -pubout -out '{{ dkim_home }}/{{ selector }}.pub.key'
+  args:
+    creates: '{{ dkim_home }}/{{ selector }}.pub.key'
+
+- name: generate dkim TXT record
+  shell: ( echo p= ; grep -Ev -- '-+(BEGIN|END) PUBLIC KEY-+' '{{ dkim_home }}/{{ selector }}.pub.key') | tr -d '\n' | fold -w255 | awk 'BEGIN { print "{{ selector }}._domainkey{{ "." + subdomain if subdomain is defined else "" }}     IN TXT ( \"v=DKIM1; k=rsa; \"" } { print "    " "\"" $0 "\"" } END { print ") ;" }' > '{{ dkim_home }}/{{ selector }}.txt'
+  args:
+    creates: '{{ dkim_home }}/{{ selector }}.txt'
