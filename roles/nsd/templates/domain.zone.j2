@@ -45,7 +45,7 @@ git IN AAAA {{ ip6 }}
 dav IN A {{ ip }}
 dav IN AAAA {{ ip6 }}
 
-{% for name, record in (a_records | default({})).iteritems() %}
+{% for name, record in (a_records | default({})).items() %}
 {{ name }} IN A {{ record.ip }}
 {% if record.ip6 is defined %}
 {{ name }} IN AAAA {{ record.ip6 }}

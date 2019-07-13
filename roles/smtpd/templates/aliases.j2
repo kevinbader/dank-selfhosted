@@ -93,6 +93,6 @@ dumper: {{ username }}
 abuse:          root
 security:       root
 
-{% for address, recipients in (mail_aliases | default({})).iteritems() %}
+{% for address, recipients in (mail_aliases | default({})).items() %}
 {{ address }}: {{ ([recipients] if recipients is string else recipients) | join(', ') }}
 {% endfor %}

@@ -1,6 +1,6 @@
 127.0.0.1 localhost {{ hostname }} {{ hostname }}.{{ domain }}
 ::1       localhost {{ hostname }} {{ hostname }}.{{ domain }}
 
-{% for ip,hostnames in (etc_hosts | default({})).iteritems() %}
+{% for ip,hostnames in (etc_hosts | default({})).items() %}
 {{ ip }} {{ hostnames | join(' ') }}
 {% endfor %}

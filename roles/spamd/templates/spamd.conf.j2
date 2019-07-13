@@ -4,7 +4,7 @@ all:\
 {% endfor %}
 
 
-{% for name, url in spamd_blacklists.iteritems() %}
+{% for name, url in spamd_blacklists.items() %}
 {{ name }}:\
 	:black:\
 	:msg="Blocked: your address %A is in the {{ name }} list":\
